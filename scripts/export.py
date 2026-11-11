@@ -20,14 +20,40 @@ def clean(n):
 pool['disp']=pool.name.map(clean)
 assert pool.disp.is_unique, pool[pool.disp.duplicated(keep=False)][['name','disp']]
 pool=pool.sort_values('disp'); cid2i={cid:i for i,cid in enumerate(pool.club_id)}
-clubs=[[r.disp,r.domestic_competition_id] for r in pool.itertuples()]
+clubs=[[r.disp,r.domestic_competition_id,int(r.club_id)] for r in pool.itertuples()]
+disp_by_id=dict(zip(pool.club_id,pool.disp))
 # players sorted by fame desc
 realmv=dict(mv)
 for k,v in hist.items():
     if not mv.get(k): mv[k]=min(2e6*len(v),8e6)
 pids=sorted(hist,key=lambda x:-mv.get(x,0))
 pi={pid:i for i,pid in enumerate(pids)}
-players=[[pname.get(pid) if isinstance(pname.get(pid),str) else tname.get(pid) if isinstance(tname.get(pid),str) else wname.get(pid,'?'), sorted(cid2i[c] for c in hist[pid])] for pid in pids]
+pr=p.set_index('player_id')
+def shortclub(cid,name):
+    if cid in disp_by_id: return disp_by_id[cid]
+    if not isinstance(name,str): return ''
+    n=re.sub(r'^(Club Atlético|Club Atletico|Clube de Regatas do|Club de Regatas|Sport Club|Associação Atlética|Asociación Atlética|Club Sportivo|Club Social y Deportivo|Club Deportivo|Club|Clube)\s+','',name)
+    n=re.sub(r'\b(FC|SC|CF|AC|Futebol Clube|Football Club|Fútbol Club|Soccer Club)\b','',n)
+    return re.sub(r'\s+',' ',n).strip()
+POS={'Attack':'Forward','Midfield':'Midfielder','Defender':'Defender','Goalkeeper':'Goalkeeper'}
+def info(pid):
+    if pid not in pr.index: return ['','','']
+    r=pr.loc[pid]
+    club=shortclub(r.current_club_id,r.current_club_name)
+    yr=str(r.date_of_birth)[:4] if isinstance(r.date_of_birth,str) else ''
+    if r.last_season>=2025 and club: st=club
+    elif club: st=f"Last club: {club} ({int(r.last_season)})"
+    else: st=''
+    if yr: st+=f" · b.{yr}"
+    nat=r.country_of_citizenship if isinstance(r.country_of_citizenship,str) else ''
+    pos=POS.get(r.position,'') if isinstance(r.position,str) else ''
+    return [st,nat,pos]
+def nm(pid):
+    for d in (pname,tname,wname):
+        v=d.get(pid)
+        if isinstance(v,str): return v
+    return '?'
+players=[[nm(pid), sorted(cid2i[c] for c in hist[pid]), *info(pid)] for pid in pids]
 links=collections.defaultdict(list)
 for pid in pids:
     s=sorted(cid2i[c] for c in hist[pid])
@@ -36,12 +62,22 @@ for pid in pids:
 cf=collections.Counter()
 for pid,s in hist.items():
     for c in s: cf[cid2i[c]]+=realmv.get(pid,0)
-top=set(c for c,_ in cf.most_common(45))
+BIG=['Arsenal','Chelsea','Liverpool','Manchester City','Manchester United','Tottenham',
+'Real Madrid','Barcelona','Atlético Madrid','Sevilla','Valencia','Villarreal',
+'Juventus','Inter Milan','AC Milan','Napoli','Roma','Lazio',
+'Bayern Munich','Borussia Dortmund','Bayer Leverkusen','RB Leipzig','Schalke 04','Eintracht Frankfurt',
+'PSG','Marseille','Lyon','Monaco','Lille','Rennes',
+'Ajax','PSV Eindhoven','Feyenoord','AZ Alkmaar','FC Twente','Utrecht',
+'Benfica','Porto','Sporting CP','Braga','Vitória Guimarães','Boavista']
+ci={c[0]:i for i,c in enumerate(clubs)}
+top=set(ci[n] for n in BIG)
+print('top six per league:',sorted(clubs[i][0] for i in top))
 trios=[]
 for tr,ls in links.items():
     b=mv.get(pids[ls[0]],0)
     n=len(ls)
-    tier=0 if (set(tr)<=top and (b>=2e7 or n>=5)) else 1 if (b>=1e7 or n>=3) else 2
+    big=set(tr)<=top
+    tier=(0 if (b>=2e7 or n>=3) else 1) if big else 2
     trios.append([*tr,tier,ls[:5],len(ls)])
 print(len(clubs),len(players),len(trios),collections.Counter(x[3] for x in trios))
 json.dump({'clubs':clubs,'players':players,'trios':trios},open('site/data.json','w'),ensure_ascii=False,separators=(',',':'))
