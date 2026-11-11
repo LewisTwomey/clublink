@@ -361,6 +361,9 @@ let tick,stopMic=null,micOff=false;
 /* one shared recogniser for the whole session: iOS Safari stops hearing after the first
    session if a new SpeechRecognition object is created each time */
 const VOICE={rec:null,busy:false,h:null};
+/* iPhone/iPad Safari only hears the first in-page speech session per page load,
+   so on iOS the mic button hands over to the keyboard's own dictation instead */
+const IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 function getRec(){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR)return null;
@@ -406,7 +409,7 @@ function startTurn(){
     let res=search(q,5);
     if(res.length<5){const w=q.split(' ').pop();if(q.includes(' '))for(const i of search(w,5))if(!res.includes(i))res.push(i);
       if(res.length<5&&w.length>=4)for(const i of fuzzy(w,8))if(!res.includes(i))res.push(i);}
-    if(q.includes(' ')){const ws=q.split(' ').slice(0,-1),sc=i=>ws.filter(w=>IDX[i].t.some(x=>x.startsWith(w))).length;res=res.map((i,k)=>[i,k]).sort((x,y)=>sc(y[0])-sc(x[0])||x[1]-y[1]).map(x=>x[0])}
+    if(q.includes(' ')){const ws=q.split(' ').slice(0,-1),sc=i=>ws.filter(w=>IDX[i].t.some(x=>x.startsWith(w)||(w.length>=3&&near(w,x,1)))).length;res=res.map((i,k)=>[i,k]).sort((x,y)=>sc(y[0])-sc(x[0])||x[1]-y[1]).map(x=>x[0])}
     res=res.slice(0,5);
     sg.innerHTML=res.length?res.map(i=>`<button data-i="${i}">${card(i)}</button>`).join(''):`<div class="none">No player found</div>`;
     sg.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>submit(+b.dataset.i));
@@ -424,7 +427,11 @@ function startTurn(){
     if(k==='order')$('#clubwrap').innerHTML=clubsHTML(null,co[1]);
     if(document.activeElement===g)g.focus({preventScroll:true});
   });
-  if(getRec()&&!micOff){
+  if(IOS){
+    const mic=$('#mic');mic.classList.remove('hidden');$('.answer').classList.add('has-mic');
+    mic.onclick=ev=>{ev.preventDefault();ev.stopPropagation();g.value='';draw();g.focus();
+      sg.innerHTML='<div class="listening">Tap the 🎤 on your keyboard and say the name</div>'};
+  }else if(getRec()&&!micOff){
     const mic=$('#mic');mic.classList.remove('hidden');$('.answer').classList.add('has-mic');
     const rec=getRec();let heard='',guard=null;
     const done=()=>{clearTimeout(guard);mic.classList.remove('on')};
@@ -467,9 +474,10 @@ function startTurn(){
 }
 
 function lev(a,b,cap){if(Math.abs(a.length-b.length)>cap)return cap+1;let prev=[...Array(b.length+1).keys()];for(let i=1;i<=a.length;i++){const cur=[i];let mn=i;for(let j=1;j<=b.length;j++){cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));if(cur[j]<mn)mn=cur[j]}if(mn>cap)return cap+1;prev=cur}return prev[b.length]}
+const near=(w,x,cap)=>x.length>=3&&(lev(w,x,cap)<=cap||(x.length>w.length&&(lev(w,x.slice(0,w.length),1)<=1||lev(w,x.slice(0,w.length+1),1)<=1)));
 function fuzzy(w,max){
   const cap=w.length>=6?2:1,out=[],lim=Math.min(IDX.length,25000);
-  for(let i=0;i<lim&&out.length<max;i++){const t=IDX[i].t;if(t.some(x=>x.length>=3&&lev(w,x,cap)<=cap))out.push(i)}
+  for(let i=0;i<lim&&out.length<max;i++){const t=IDX[i].t;if(t.some(x=>near(w,x,cap)))out.push(i)}
   return out;
 }
 function search(q,max=8){
