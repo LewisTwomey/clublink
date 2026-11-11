@@ -33,6 +33,8 @@ h2{font-family:var(--serif);font-weight:400;font-size:34px;line-height:1.1}
 .lede{color:var(--mute);font-size:15px;line-height:1.55;margin:14px 0 2px}
 
 /* bar rail of taps */
+.strip{margin:6px -16px 4px;height:120px;background:url('https://burst.shopifycdn.com/photos/beer-taps.jpg?width=1200&format=pjpg&exif=0&iptc=0') center 45%/cover no-repeat;position:relative;border-top:1px solid rgba(226,180,90,.35);border-bottom:6px solid var(--brass2)}
+.strip::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,9,7,.55),rgba(11,9,7,.15) 40%,rgba(11,9,7,.45))}
 .rail{display:flex;justify-content:center;gap:18px;padding:14px 0 0;border-bottom:6px solid var(--brass2);box-shadow:0 1px 0 rgba(255,255,255,.08);margin:6px 0 4px;position:relative}
 .rail::after{content:"";position:absolute;left:0;right:0;bottom:-10px;height:4px;background:var(--wood2)}
 .rail svg{width:26px;height:58px}
@@ -88,10 +90,10 @@ button{font:600 15px var(--sans);border:0;cursor:pointer;color:var(--cream);back
 .thin{height:4px;background:rgba(244,234,216,.1);border-radius:2px;overflow:hidden;margin-bottom:10px}
 .thin i{display:block;height:100%;background:var(--brass);transition:width .25s linear}
 .thin.low i{background:var(--bad)}
-.chips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:10px}
-.chip{display:flex;align-items:center;gap:7px;min-height:44px;padding:6px 8px;border:1px solid var(--line2);border-radius:10px;background:rgba(28,20,14,.85);text-align:left}
+.chips{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:10px}
+.chip{display:flex;align-items:center;justify-content:center;text-align:center;min-height:44px;padding:6px 4px;border:1px solid var(--line2);border-radius:10px;background:rgba(28,20,14,.85);text-align:left}
 .chip svg{width:12px;height:28px;flex:none}
-.chip span{display:flex;flex-direction:column;font-size:12px;font-weight:600;line-height:1.2;min-width:0}
+.chip span{display:flex;flex-direction:column;align-items:center;word-break:break-word;font-size:12px;font-weight:600;line-height:1.2;min-width:0}
 .chip em{font-style:normal;font-size:10.5px;color:var(--brass);font-weight:600}
 .chip.poured{border-color:rgba(226,180,90,.55);background:rgba(226,180,90,.12)}
 .chip.poured span{color:var(--brass)}
@@ -173,7 +175,7 @@ function tapSVG(col,label){
     <path d="M14 61h6v7a3 3 0 0 1-6 0z" fill="#aeb3b9"/>
   </svg>`;
 }
-const rail=()=>`<div class="rail">${TAPCOL.map(c=>tapSVG(c)).join('')}</div>`;
+const rail=()=>`<div class="strip" role="img" aria-label="A row of beer taps"></div>`;
 
 function save(){try{localStorage.setItem('tc_setup',JSON.stringify({names:S.names,rounds:S.rounds,diff:S.diff,modern:S.modern}))}catch(e){}}
 function loadSetup(){try{return JSON.parse(localStorage.getItem('tc_setup'))}catch(e){return null}}
@@ -182,7 +184,7 @@ async function init(){
   D=await (await fetch('data.json')).json();
   IDX=D.players.map(p=>{const n=norm(p[0]);return{n,t:n.split(' ')}});
   const s=loadSetup()||{};
-  S={names:s.names&&s.names.length?s.names:['',''],rounds:s.rounds||5,diff:s.diff||'mixed',modern:s.modern!==false};
+  S={names:s.names&&s.names.length?s.names:['',''],rounds:s.rounds||5,diff:['fun','hard'].includes(s.diff)?s.diff:'fun',modern:s.modern!==false};
   setup();
 }
 const screen=(home)=>{document.body.classList.toggle('home',!!home);window.scrollTo(0,0)};
@@ -198,13 +200,13 @@ function setup(){
   <div class="label">Rounds</div>
   <div class="seg" id="rounds">${[3,5,10,15].map(n=>`<button data-v="${n}">${n}</button>`).join('')}</div>
   <div class="label">Difficulty</div>
-  <div class="seg" id="diff">${['easy','medium','hard','mixed'].map(n=>`<button data-v="${n}">${n[0].toUpperCase()+n.slice(1)}</button>`).join('')}</div>
-  <p class="hint">Easy and Medium use the top six clubs in each league. Hard uses every club.</p>
+  <div class="seg two" id="diff"><button data-v="fun">Fun pub mode</button><button data-v="hard">Hard mixed</button></div>
+  <p class="hint">Fun pub mode sticks to the top six clubs in each league. Hard mixed throws in every club.</p>
   <div class="label">Three-pointers</div>
   <div class="seg two" id="modern"><button data-v="true">2010 onwards</button><button data-v="false">All eras</button></div>
   <div class="err" id="serr"></div>
   <button class="btn" id="go">Kick off</button>
-  <p class="foot">Clues cost a point each. Player data from Transfermarkt and Wikidata.</p>`;
+  <p class="foot">Clues cost a point each, initials cost two. Beer taps photo from Burst. Player data from Transfermarkt and Wikidata.</p>`;
   const draw=()=>{
     $('#plist').innerHTML=S.names.map((n,i)=>`<div class="prow"><input type="text" maxlength="16" placeholder="Player ${i+1}" value="${esc(n)}" data-i="${i}">${S.names.length>1?`<button data-x="${i}" aria-label="Remove player">×</button>`:''}</div>`).join('');
     $('#plist').querySelectorAll('input').forEach(el=>el.oninput=()=>{S.names[el.dataset.i]=el.value;$('#serr').textContent=''});
@@ -226,7 +228,7 @@ function setup(){
 }
 
 function pickTrio(){
-  const tier=S.diff==='easy'?0:S.diff==='medium'?1:S.diff==='hard'?2:(()=>{const r=Math.random();return r<.45?0:r<.85?1:2})();
+  const r=Math.random(),tier=S.diff==='fun'?(r<.7?0:1):(r<.15?0:r<.5?1:2);
   const ti=S.modern?6:3;const pool=D.trios.filter(t=>t[ti]===tier);
   for(let k=0;k<50;k++){const t=pool[Math.floor(Math.random()*pool.length)];const key=t.slice(0,3).join();if(!S.used.has(key)){S.used.add(key);return t}}
   return pool[Math.floor(Math.random()*pool.length)];
@@ -247,7 +249,7 @@ function clubsHTML(hits,order){
   return `<div class="clubs" id="clubs">${list.map((ci,k)=>{const c=D.clubs[ci];const cls=hits?(hits.includes(ci)?' hit':' miss'):'';
     return `<div class="club${cls}"><div class="crest"><img src="https://tmssl.akamaized.net/images/wappen/head/${c[2]}.png" alt="" loading="lazy" onerror="this.style.visibility='hidden'"></div>${order?`<span class="ord">${k+1}</span>`:''}<span class="cn">${esc(c[0])}</span><small>${LEAGUE[c[1]]}</small></div>`}).join('')}</div>`;
 }
-function topbar(){return `<div class="topbar"><span>Round <b>${S.round}</b> of ${S.rounds}</span><span>${S.diff}${S.modern?' · 2010+':''}</span></div>`}
+function topbar(){return `<div class="topbar"><span>Round <b>${S.round}</b> of ${S.rounds}</span><span>${S.diff==='fun'?'Fun pub':'Hard mixed'}${S.modern?' · 2010+':''}</span></div>`}
 const threes=()=>S.modern?[S.trio[7],S.trio[8]]:[S.trio[4],S.trio[5]];
 const clueOf=()=>S.trio[S.modern?10:9];
 
@@ -270,21 +272,23 @@ function startTurn(){
   const end=Date.now()+30000;
   let sel=null;
   const used=new Set();
+  const cost=()=>CLUES.filter(c=>used.has(c.k)).reduce((t,c)=>t+(c.cost||1),0);
   const co=clueOf(),pi=co?co[0]:threes()[0][0],cp=D.players[pi];
   const nat=cp[3],pos=cp[4],ini=cp[0].split(/\s+/).map(w=>w[0]).join('.')+'.';
   const CLUES=[
     {k:'order',name:'Club order',ok:!!co,val:()=>'Shown 1–2–3'},
     {k:'nat',name:'Nationality',ok:!!nat,val:()=>esc(nat)},
-    {k:'pos',name:'Position',ok:true,val:()=>`${pos?esc(pos)+' · ':''}${esc(ini)}`},
+    {k:'pos',name:'Position',ok:!!pos,val:()=>esc(pos)},
+    {k:'ini',name:'Initials',ok:true,cost:2,val:()=>esc(ini)},
   ];
   app.innerHTML=`<div id="clubwrap">${clubsHTML()}</div>
   <div class="turnbar" id="tb"><div class="who">${esc(S.names[p])}</div><div class="secs" id="secs">30</div><button class="passbtn" id="pass">Pass</button></div>
   <div class="thin" id="thin"><i id="barfill" style="width:100%"></i></div>
-  <div class="chips">${CLUES.map((c,i)=>`<button class="chip" data-k="${c.k}" ${c.ok?'':'disabled'} aria-label="${c.name} clue, costs 1 point">${tapSVG(TAPCOL[i],'')}<span>${c.name}<em>${c.ok?'Clue −1 pt':'No data'}</em></span></button>`).join('')}</div>
+  <div class="chips">${CLUES.map(c=>`<button class="chip" data-k="${c.k}" ${c.ok?'':'disabled'} aria-label="${c.name} clue, costs ${c.cost||1} point${(c.cost||1)>1?'s':''}"><span>${c.name}<em>${c.ok?`−${c.cost||1} pt`:'No data'}</em></span></button>`).join('')}</div>
   <input type="text" id="guess" placeholder="Type a player, tap to lock in" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
   <div class="err" id="gerr" style="min-height:0;margin-top:4px"></div>
   <div class="sugg compact" id="sugg"></div>
-  <div class="dim" style="margin-top:10px">Round ${S.round} of ${S.rounds} · ${S.diff}${S.modern?' · 2010+':''}</div>`;
+  <div class="dim" style="margin-top:10px">Round ${S.round} of ${S.rounds} · ${S.diff==='fun'?'Fun pub':'Hard mixed'}${S.modern?' · 2010+':''}</div>`;
   const g=$('#guess'),sg=$('#sugg');g.focus();
   const card=i=>`<b>${esc(D.players[i][0])}</b><span>${esc(D.players[i][2]||'Former player')}</span>`;
   const draw=()=>{
@@ -296,14 +300,14 @@ function startTurn(){
   };
   g.oninput=draw;
   g.onkeydown=e=>{if(e.key==='Enter'){const f=sg.querySelector('[data-i]');if(f)f.click();else $('#gerr').textContent='Type a player and tap their name'}};
-  const update=()=>{const left=Math.max(0,end-Date.now());const s=Math.ceil(left/1000);$('#secs').textContent=s;$('#barfill').style.width=(left/300)+'%';$('#thin').classList.toggle('low',s<=10);$('#tb').classList.toggle('low',s<=10);if(left<=0){clearInterval(tick);resolve(null,'Time’s up',null,used.size)}};
+  const update=()=>{const left=Math.max(0,end-Date.now());const s=Math.ceil(left/1000);$('#secs').textContent=s;$('#barfill').style.width=(left/300)+'%';$('#thin').classList.toggle('low',s<=10);$('#tb').classList.toggle('low',s<=10);if(left<=0){clearInterval(tick);resolve(null,'Time’s up',null,cost())}};
   clearInterval(tick);tick=setInterval(update,250);
-  $('#pass').onclick=()=>{clearInterval(tick);resolve(null,'Passed',null,used.size)};
+  $('#pass').onclick=()=>{clearInterval(tick);resolve(null,'Passed',null,cost())};
   app.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{
     const k=b.dataset.k;if(used.has(k))return;
     used.add(k);b.classList.add('poured');
     const c=CLUES.find(x=>x.k===k);
-    b.querySelector('span').innerHTML=`${c.val()}<em>−1 pt</em>`;
+    b.querySelector('span').innerHTML=`${c.val()}<em>−${c.cost||1} pt</em>`;
     if(k==='order')$('#clubwrap').innerHTML=clubsHTML(null,co[1]);
     g.focus();
   });
@@ -311,7 +315,7 @@ function startTurn(){
     if(S.answers.some(a=>a.player===sel)){$('#gerr').textContent=`${D.players[sel][0]} has already been said this round`;return}
     clearInterval(tick);
     const s=D.players[sel][1].filter(c=>S.trio.slice(0,3).includes(c)).length;
-    resolve(D.players[sel][0],null,{i:sel,s},used.size);
+    resolve(D.players[sel][0],null,{i:sel,s},cost());
   }
 }
 
@@ -334,7 +338,7 @@ function resolve(raw,reason,m,clues){
     app.innerHTML=`${topbar()}${clubsHTML(raw?hits:[])}
     <div class="result">
       <div class="pts ${ans.pts>0?'':'zero'}">${ans.pts}</div>
-      ${clues?`<div class="calc">${plural(ans.base,'point')} − ${plural(clues,'clue')}</div>`:''}
+      ${clues?`<div class="calc">${plural(ans.base,'point')} − ${clues} for clues</div>`:''}
       <div class="matched">${reason?esc(reason):esc(D.players[player][0])}</div>
       <div class="dim">${esc(S.names[p])}</div>
     </div>
@@ -358,7 +362,7 @@ function roundEnd(){
   const pairs=i=>tr.filter(c=>D.players[i][1].includes(c)).map(c=>D.clubs[c][0]).join(' + ');
   app.innerHTML=`${topbar()}${clubsHTML()}
   <div class="label">This round</div>
-  <div class="panel ans">${S.answers.map(a=>`<div><b>${esc(S.names[a.who])}</b> · ${a.player!=null?esc(D.players[a.player][0]):esc(a.reason)} · ${plural(a.pts,'pt')}${a.clues?` <span class="dim">(${plural(a.clues,'clue')})</span>`:''}</div>`).join('')}</div>
+  <div class="panel ans">${S.answers.map(a=>`<div><b>${esc(S.names[a.who])}</b> · ${a.player!=null?esc(D.players[a.player][0]):esc(a.reason)} · ${plural(a.pts,'pt')}${a.clues?` <span class="dim">(−${a.clues} clues)</span>`:''}</div>`).join('')}</div>
   <div class="label">Three points${S.modern?' · 2010+':''}</div>
   <div class="panel ans">${three.map(i=>esc(D.players[i][0])).join(', ')}${total>three.length?` <span class="dim">and ${total-three.length} more</span>`:''}</div>
   <div class="label">Two points</div>
