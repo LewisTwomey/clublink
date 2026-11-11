@@ -102,6 +102,31 @@ button{font:600 15px var(--sans);border:0;cursor:pointer;color:var(--cream);back
 .chip.poured .cost{background:var(--bad);color:#fff}
 .chip.poured span{font-size:12.5px}
 .chip:disabled{opacity:.4;filter:grayscale(.6)}
+.play{position:fixed;left:0;right:0;top:0;height:100vh;margin:0 auto;max-width:460px;display:flex;flex-direction:column;padding:10px 16px 8px;overflow:hidden;z-index:1}
+.play .sugg{flex:1;min-height:0;overflow-y:auto;align-content:start;-webkit-overflow-scrolling:touch;padding-bottom:6px}
+.play .foot2{flex:none;font-size:12px;color:var(--dim);padding-top:4px}
+body.playing{overflow:hidden;position:fixed;inset:0;width:100%}
+.kb .play .club{min-height:0;flex-direction:row;justify-content:flex-start;text-align:left;gap:7px;padding:7px 8px}
+.kb .play .crest{width:28px;height:28px}
+.kb .play .crest img{width:21px;height:21px}
+.kb .play .cn{font-size:13px}
+.kb .play .club small{display:none}
+.kb .play .ord{top:-6px;left:-4px}
+.kb .play .turnbar{margin:6px 0 4px}
+.kb .play .turnbar .who{font-size:22px}
+.kb .play .turnbar .secs{font-size:18px}
+.kb .play .passbtn{height:30px}
+.kb .play .thin{margin-bottom:6px}
+.kb .play .chips{margin-bottom:6px}
+.kb .play .chip .pint{height:30px}
+.kb .play .chip span{min-height:28px;font-size:11px}
+.kb .play .foot2{display:none}
+.dock{position:sticky;bottom:0;z-index:2;margin:0 -16px;padding:14px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(26,17,11,0),rgba(26,17,11,.95) 28%)}
+.dock .btn{margin-top:0}
+.dock.two{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}
+main{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
+main>*{flex-shrink:0}
+.dock{margin-top:auto}
 .sugg.compact button{flex-direction:row;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;min-height:44px}
 .sugg.compact b{font-size:15px}
 .sugg.compact span{font-size:12px;text-align:right;flex:none;max-width:48%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -190,7 +215,17 @@ async function init(){
   S={names:s.names&&s.names.length?s.names:['',''],rounds:s.rounds||5,diff:['fun','hard'].includes(s.diff)?s.diff:'fun',modern:s.modern!==false};
   setup();
 }
-const screen=(home)=>{document.body.classList.toggle('home',!!home);window.scrollTo(0,0)};
+const screen=(home)=>{document.body.classList.remove('playing','kb');document.body.classList.toggle('home',!!home);window.scrollTo(0,0)};
+function fitPlay(){
+  const el=document.getElementById('play');if(!el)return;
+  const vv=window.visualViewport,h=vv?vv.height:window.innerHeight,top=vv?vv.offsetTop:0;
+  el.style.height=h+'px';el.style.top=top+'px';
+  fitPlay.full=Math.max(fitPlay.full||0,h,document.documentElement.clientHeight);
+  document.body.classList.toggle('kb',h<fitPlay.full*0.78);
+}
+window.addEventListener('orientationchange',()=>{fitPlay.full=0;setTimeout(fitPlay,300)});
+if(window.visualViewport){visualViewport.addEventListener('resize',fitPlay);visualViewport.addEventListener('scroll',fitPlay)}
+window.addEventListener('resize',fitPlay);
 
 function setup(){
   screen(true);
@@ -207,9 +242,8 @@ function setup(){
   <p class="hint">Fun pub mode sticks to the top six clubs in each league. Hard mixed throws in every club.</p>
   <div class="label">Three-pointers</div>
   <div class="seg two" id="modern"><button data-v="true">2010 onwards</button><button data-v="false">All eras</button></div>
-  <div class="err" id="serr"></div>
-  <button class="btn" id="go">Kick off</button>
-  <p class="foot">Clues cost a point each, initials cost two. Beer and tap photos from Burst. Player data from Transfermarkt and Wikidata.</p>`;
+  <p class="foot">Clues cost a point each, initials cost two. Beer and tap photos from Burst. Player data from Transfermarkt and Wikidata.</p>
+  <div class="dock"><div class="err" id="serr" style="min-height:0;margin:0 0 6px"></div><button class="btn" id="go">Kick off</button></div>`;
   const draw=()=>{
     $('#plist').innerHTML=S.names.map((n,i)=>`<div class="prow"><input type="text" maxlength="16" placeholder="Player ${i+1}" value="${esc(n)}" data-i="${i}">${S.names.length>1?`<button data-x="${i}" aria-label="Remove player">×</button>`:''}</div>`).join('');
     $('#plist').querySelectorAll('input').forEach(el=>el.oninput=()=>{S.names[el.dataset.i]=el.value;$('#serr').textContent=''});
@@ -263,8 +297,8 @@ function turnIntro(){
   const taken=S.answers.filter(a=>a.player!=null).map(a=>esc(D.players[a.player][0]));
   app.innerHTML=`${topbar()}${clubsHTML()}
   <div class="turn"><div class="pre">Pass the phone to</div><div class="who">${esc(S.names[p])}</div></div>
-  <button class="btn" id="start">I'm ready</button>
-  ${taken.length?`<div class="label">Already said</div><div class="log">${taken.join(', ')}</div>`:''}`;
+  ${taken.length?`<div class="label">Already said</div><div class="log">${taken.join(', ')}</div>`:''}
+  <div class="dock"><button class="btn" id="start">I'm ready</button></div>`;
   $('#start').onclick=startTurn;
 }
 
@@ -284,15 +318,16 @@ function startTurn(){
     {k:'pos',img:'https://burst.shopifycdn.com/photos/poured-beer-pints.jpg?width=240&format=pjpg&exif=0&iptc=0',name:'Position',ok:!!pos,val:()=>esc(pos)},
     {k:'ini',img:'https://burst.shopifycdn.com/photos/wit-beer-in-glass.jpg?width=240&format=pjpg&exif=0&iptc=0',pos:'70% 60%',name:'Initials',ok:true,cost:2,val:()=>esc(ini)},
   ];
-  app.innerHTML=`<div id="clubwrap">${clubsHTML()}</div>
+  document.body.classList.add('playing');
+  app.innerHTML=`<div class="play" id="play"><div id="clubwrap">${clubsHTML()}</div>
   <div class="turnbar" id="tb"><div class="who">${esc(S.names[p])}</div><div class="secs" id="secs">30</div><button class="passbtn" id="pass">Pass</button></div>
   <div class="thin" id="thin"><i id="barfill" style="width:100%"></i></div>
   <div class="chips">${CLUES.map(c=>`<button class="chip" data-k="${c.k}" ${c.ok?'':'disabled'} aria-label="${c.name} clue, costs ${c.cost||1} point${(c.cost||1)>1?'s':''}"><div class="pint" style="background-image:url('${c.img}');background-position:${c.pos||'center'}"></div><b class="cost">${c.ok?`−${c.cost||1}`:'n/a'}</b><span>${c.name}</span></button>`).join('')}</div>
   <input type="text" id="guess" placeholder="Type a player, tap to lock in" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
   <div class="err" id="gerr" style="min-height:0;margin-top:4px"></div>
   <div class="sugg compact" id="sugg"></div>
-  <div class="dim" style="margin-top:10px">Round ${S.round} of ${S.rounds} · ${S.diff==='fun'?'Fun pub':'Hard mixed'}${S.modern?' · 2010+':''}</div>`;
-  const g=$('#guess'),sg=$('#sugg');g.focus();
+  <div class="foot2">Round ${S.round} of ${S.rounds} · ${S.diff==='fun'?'Fun pub':'Hard mixed'}${S.modern?' · 2010+':''}</div></div>`;
+  const g=$('#guess'),sg=$('#sugg');fitPlay();g.focus({preventScroll:true});
   const card=i=>`<b>${esc(D.players[i][0])}</b><span>${esc(D.players[i][2]||'Former player')}</span>`;
   const draw=()=>{
     const q=norm(g.value);$('#gerr').textContent='';
@@ -312,7 +347,7 @@ function startTurn(){
     const c=CLUES.find(x=>x.k===k);
     b.querySelector('span').innerHTML=c.val();
     if(k==='order')$('#clubwrap').innerHTML=clubsHTML(null,co[1]);
-    g.focus();
+    g.focus({preventScroll:true});
   });
   function submit(sel){
     if(S.answers.some(a=>a.player===sel)){$('#gerr').textContent=`${D.players[sel][0]} has already been said this round`;return}
@@ -337,6 +372,7 @@ function resolve(raw,reason,m,clues){
   if(m){player=m.i;base=m.s;hits=D.players[m.i][1].filter(c=>S.trio.slice(0,3).includes(c))}
   const ans={who:p,raw,player,base,clues,pts:base-clues,reason};
   S.answers.push(ans);S.scores[p]+=ans.pts;
+  screen(false);
   const showResult=()=>{
     app.innerHTML=`${topbar()}${clubsHTML(raw?hits:[])}
     <div class="result">
@@ -346,7 +382,7 @@ function resolve(raw,reason,m,clues){
       <div class="dim">${esc(S.names[p])}</div>
     </div>
     ${raw?`<div class="label">Data missed a spell? Set the clubs matched</div><div class="override">${[0,1,2,3].map(n=>`<button data-p="${n}" class="${n===ans.base?'on':''}">${n}</button>`).join('')}</div>`:''}
-    <button class="btn" id="next">${S.turn+1<S.order.length?`Next: ${esc(S.names[S.order[S.turn+1]])}`:'See the round'}</button>`;
+    <div class="dock"><button class="btn" id="next">${S.turn+1<S.order.length?`Next: ${esc(S.names[S.order[S.turn+1]])}`:'See the round'}</button></div>`;
     app.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{const n=+b.dataset.p;const np=n-ans.clues;S.scores[p]+=np-ans.pts;ans.base=n;ans.pts=np;showResult()});
     $('#next').onclick=()=>{S.turn++;S.turn<S.order.length?turnIntro():roundEnd()};
   };
@@ -359,6 +395,7 @@ function standings(){
 }
 
 function roundEnd(){
+  screen(false);
   const t=S.trio,tr=t.slice(0,3),[three,total]=threes();
   const two=[];
   for(let i=0;i<D.players.length&&two.length<12;i++){const c=D.players[i][1];if(S.modern&&!D.players[i][5])continue;let n=0;for(const x of tr)if(c.includes(x))n++;if(n===2)two.push(i)}
@@ -370,8 +407,17 @@ function roundEnd(){
   <div class="panel ans">${three.map(i=>esc(D.players[i][0])).join(', ')}${total>three.length?` <span class="dim">and ${total-three.length} more</span>`:''}</div>
   <div class="label">Two points</div>
   <div class="panel ans">${two.map(i=>`<div>${esc(D.players[i][0])} <span class="dim">· ${esc(pairs(i))}</span></div>`).join('')||'None'}</div>
-  <div class="label">Table</div>${standings()}
-  <button class="btn" id="next">${S.round<S.rounds?'Next round':'Final whistle'}</button>`;
+  <div class="dock two"><button class="btn ghost" id="tbl">See table</button><button class="btn" id="next">${S.round<S.rounds?'Next round':'Final whistle'}</button></div>`;
+  $('#tbl').onclick=tableScreen;
+  $('#next').onclick=nextRound;
+}
+
+function tableScreen(){
+  screen(false);
+  app.innerHTML=`${topbar()}<div class="center" style="padding:10px 0 4px"><div class="kicker">After round ${S.round}</div><h2 style="margin-top:6px">The table</h2></div>
+  <div class="label">Standings</div>${standings()}
+  <div class="dock two"><button class="btn ghost" id="back">Round recap</button><button class="btn" id="next">${S.round<S.rounds?'Next round':'Final whistle'}</button></div>`;
+  $('#back').onclick=roundEnd;
   $('#next').onclick=nextRound;
 }
 
