@@ -130,7 +130,10 @@ body.playing{overflow:hidden;position:fixed;inset:0;width:100%}
 .chip.poured{background:#FFF6C9}
 .chip.poured span{color:var(--red);font-size:15px;overflow-wrap:normal;word-break:normal}
 .chip.poured .pint{filter:brightness(.75)}
-.chip.poured .cost{background:var(--ink)}
+.chip.poured .cost{background:var(--lime)}
+.chip.spent{opacity:.45;filter:grayscale(1)}
+.chip.spent .cost{background:var(--ink)}
+.chip.locked{opacity:.55}
 .chip:disabled{opacity:.45;filter:grayscale(1)}
 
 /* guess + suggestions */
@@ -297,7 +300,7 @@ function setup(){
   <div class="seg two" id="modern"><button data-v="true">2010 onwards</button><button data-v="false">All eras</button></div>
   <div class="label">Timer</div>
   <div class="seg" id="timer" style="grid-template-columns:repeat(3,1fr)"><button data-v="30">30 sec</button><button data-v="60">1 min</button><button data-v="0">No timer</button></div>
-  <p class="foot">Clues cost a point each, initials cost two. Beer and tap photos from Burst. Player data from Transfermarkt and Wikidata.</p>
+  <p class="foot">Each player gets each clue once per game, one clue per turn. Beer and tap photos from Burst. Player data from Transfermarkt and Wikidata.</p>
   <div class="dock"><div class="err" id="serr" style="min-height:0;margin:0 0 6px"></div><button class="btn" id="go">Kick off</button></div>`;
   const draw=()=>{
     $('#plist').innerHTML=S.names.map((n,i)=>`<div class="prow"><span class="num">${i+1}</span><input type="text" maxlength="16" placeholder="Name" value="${esc(n)}" data-i="${i}">${S.names.length>1?`<button data-x="${i}" aria-label="Remove player">×</button>`:''}</div>`).join('');
@@ -314,7 +317,7 @@ function setup(){
     if(!names.length){$('#serr').textContent='Add at least one player';return}
     if(new Set(names.map(n=>n.toLowerCase())).size!==names.length){$('#serr').textContent='Player names need to be different';return}
     S.names=names;save();
-    S.scores=names.map(()=>0);S.round=0;S.used=new Set();
+    S.scores=names.map(()=>0);S.round=0;S.used=new Set();S.clueUsed=names.map(()=>[]);
     nextRound();
   };
 }
@@ -357,7 +360,7 @@ function turnIntro(){
   $('#start').onclick=startTurn;
 }
 
-let tick,stopMic=null,micOff=false;
+let tick,stopMic=null,micOff=false,turnClue=null;
 /* one shared recogniser for the whole session: iOS Safari stops hearing after the first
    session if a new SpeechRecognition object is created each time */
 const VOICE={rec:null,busy:false,h:null};
@@ -380,23 +383,25 @@ function getRec(){
 function startTurn(){
   screen(false);
   const p=S.order[S.turn];
+  turnClue=null;
   const T=S.timer,end=T?Date.now()+T*1000:0;
   let sel=null;
   const used=new Set();
-  const cost=()=>CLUES.filter(c=>used.has(c.k)).reduce((t,c)=>t+(c.cost||1),0);
+  const cost=()=>0;
+  const mine=S.clueUsed[p];
   const co=clueOf(),pi=co?co[0]:threes()[0][0],cp=D.players[pi];
   const nat=cp[3],pos=cp[4],ini=cp[0].split(/\s+/).map(w=>w[0]).join('.')+'.';
   const CLUES=[
     {k:'order',img:'https://burst.shopifycdn.com/photos/pouring-pint-of-beer.jpg?width=240&format=pjpg&exif=0&iptc=0',name:'Club order',ok:!!co,val:()=>'Shown 1–2–3'},
     {k:'nat',img:'https://burst.shopifycdn.com/photos/freshly-poured-pint-of-beer.jpg?width=240&format=pjpg&exif=0&iptc=0',name:'Nationality',ok:!!nat,val:()=>esc(nat)},
     {k:'pos',img:'https://burst.shopifycdn.com/photos/poured-beer-pints.jpg?width=240&format=pjpg&exif=0&iptc=0',name:'Position',ok:!!pos,val:()=>esc(pos)},
-    {k:'ini',img:'https://burst.shopifycdn.com/photos/wit-beer-in-glass.jpg?width=240&format=pjpg&exif=0&iptc=0',pos:'70% 60%',name:'Initials',ok:true,cost:2,val:()=>esc(ini)},
+    {k:'ini',img:'https://burst.shopifycdn.com/photos/wit-beer-in-glass.jpg?width=240&format=pjpg&exif=0&iptc=0',pos:'70% 60%',name:'Initials',ok:true,val:()=>esc(ini)},
   ];
   document.body.classList.add('playing');
   app.innerHTML=`<div class="play" id="play"><div id="clubwrap">${clubsHTML()}</div>
   <div class="turnbar" id="tb"><div class="who">${esc(S.names[p])}</div><div class="secs${T?'':' hidden'}" id="secs">${T}</div><button class="passbtn" id="pass">Pass</button></div>
   <div class="thin${T?'':' hidden'}" id="thin"><i id="barfill" style="width:100%"></i></div>
-  <div class="chips">${CLUES.map(c=>`<button class="chip" data-k="${c.k}" ${c.ok?'':'disabled'} aria-label="${c.name} clue, costs ${c.cost||1} point${(c.cost||1)>1?'s':''}"><div class="pint" style="background-image:url('${c.img}');background-position:${c.pos||'center'}"></div><b class="cost">${c.ok?`−${c.cost||1}`:'n/a'}</b><span>${c.name}</span></button>`).join('')}</div>
+  <div class="chips">${CLUES.map(c=>{const gone=mine.includes(c.k);return `<button class="chip${gone?' spent':''}" data-k="${c.k}" ${c.ok&&!gone?'':'disabled'} aria-label="${c.name} clue${gone?', already used this game':', one use per game'}"><div class="pint" style="background-image:url('${c.img}');background-position:${c.pos||'center'}"></div><b class="cost">${gone?'✗':c.ok?'1×':'n/a'}</b><span>${c.name}</span></button>`}).join('')}</div>
   <label class="answer" for="guess"><span class="tag">Answer</span><input type="text" id="guess" placeholder="Write a player…" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go"><span class="pencil" aria-hidden="true">✎</span><button type="button" class="mic hidden" id="mic" aria-label="Say the player's name"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg></button></label>
   <div class="err" id="gerr" style="min-height:0;margin-top:4px"></div>
   <div class="sugg compact" id="sugg"></div>
@@ -420,8 +425,9 @@ function startTurn(){
   clearInterval(tick);tick=setInterval(update,250);
   $('#pass').onclick=()=>{clearInterval(tick);if(stopMic)stopMic();resolve(null,'Passed',null,cost())};
   app.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{
-    const k=b.dataset.k;if(used.has(k))return;
-    used.add(k);b.classList.add('poured');
+    const k=b.dataset.k;if(used.size||mine.includes(k))return;
+    used.add(k);mine.push(k);turnClue=CLUES.find(x=>x.k===k).name;b.classList.add('poured');
+    app.querySelectorAll('.chip').forEach(o=>{if(o!==b){o.disabled=true;o.classList.add('locked')}});
     const c=CLUES.find(x=>x.k===k);
     b.querySelector('span').innerHTML=c.val();
     if(k==='order')$('#clubwrap').innerHTML=clubsHTML(null,co[1]);
@@ -493,7 +499,7 @@ function resolve(raw,reason,m,clues){
   const p=S.order[S.turn];
   let base=0,hits=[],player=null;
   if(m){player=m.i;base=m.s;hits=D.players[m.i][1].filter(c=>S.trio.slice(0,3).includes(c))}
-  const ans={who:p,raw,player,base,clues,pts:base-clues,reason};
+  const ans={who:p,raw,player,base,clues,pts:base-clues,reason,clue:turnClue};
   S.answers.push(ans);S.scores[p]+=ans.pts;
   screen(false);
   const showResult=()=>{
@@ -505,7 +511,7 @@ function resolve(raw,reason,m,clues){
         ans.base===1?`<div class="stamp post">Off the post</div>`:
         `<div class="redcard"></div><div class="stamp miss">Miss</div>`}
       <div class="pts pop">${ans.pts}</div>
-      ${clues?`<div class="calc">${plural(ans.base,'point')} − ${clues} for clues</div>`:''}
+      ${ans.clue?`<div class="calc">Used the ${esc(ans.clue.toLowerCase())} clue</div>`:''}
       <div class="matched">${reason?esc(reason):esc(D.players[player][0])}</div>
       <div class="dim">${esc(S.names[p])}</div>
     </div>
@@ -530,7 +536,7 @@ function roundEnd(){
   const pairs=i=>tr.filter(c=>D.players[i][1].includes(c)).map(c=>D.clubs[c][0]).join(' + ');
   app.innerHTML=`${topbar()}${clubsHTML()}
   <div class="label">This round</div>
-  <div class="panel ans">${S.answers.map(a=>`<div><b>${esc(S.names[a.who])}</b> · ${a.player!=null?esc(D.players[a.player][0]):esc(a.reason)} · ${plural(a.pts,'pt')}${a.clues?` <span class="dim">(−${a.clues} clues)</span>`:''}</div>`).join('')}</div>
+  <div class="panel ans">${S.answers.map(a=>`<div><b>${esc(S.names[a.who])}</b> · ${a.player!=null?esc(D.players[a.player][0]):esc(a.reason)} · ${plural(a.pts,'pt')}${a.clue?` <span class="dim">(${esc(a.clue)} clue)</span>`:''}</div>`).join('')}</div>
   <div class="label">Three points${S.modern?' · 2010+':''}</div>
   <div class="panel ans">${three.map(i=>esc(D.players[i][0])).join(', ')}${total>three.length?` <span class="dim">and ${total-three.length} more</span>`:''}</div>
   <div class="label">Two points</div>
@@ -556,7 +562,7 @@ function finish(){
   ${rail()}
   <div class="label">Final table</div>${standings()}
   <div class="dock two"><button class="btn ghost" id="new">New game</button><button class="btn" id="again">Rematch</button></div>`;
-  $('#again').onclick=()=>{S.scores=S.names.map(()=>0);S.round=0;nextRound()};
+  $('#again').onclick=()=>{S.scores=S.names.map(()=>0);S.clueUsed=S.names.map(()=>[]);S.round=0;nextRound()};
   $('#new').onclick=setup;
 }
 
