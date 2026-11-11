@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-GB">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -87,7 +87,7 @@ input[type=text]:focus{border-bottom:2px solid var(--white)}
 .club small{order:-1;align-self:stretch;background:var(--ink);color:var(--paper);font-family:var(--disp);font-weight:600;font-size:10.5px;letter-spacing:2px;padding:3px 0}
 .crest{width:46px;height:46px;flex:none;margin:9px 0 6px;border-radius:50%;background:#fff;border:2px solid var(--ink);display:grid;place-items:center}
 .crest img{width:32px;height:32px;object-fit:contain}
-.cn{font-family:var(--disp);font-weight:700;font-size:16px;line-height:1.05;text-transform:uppercase;letter-spacing:.3px;padding:0 5px 9px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+.cn{font-family:var(--disp);font-weight:700;font-size:15px;line-height:1.05;text-transform:uppercase;letter-spacing:0;padding:0 4px 9px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;hyphens:auto}
 .club.hit{background:#D8F0DF;box-shadow:0 0 0 3px var(--lime),var(--shadow)}
 .club.hit small{background:var(--lime2)}
 .club.miss{opacity:.38;filter:grayscale(.7)}
@@ -119,7 +119,7 @@ body.playing{overflow:hidden;position:fixed;inset:0;width:100%}
 .chip:active{transform:scale(.95)}
 .chip .pint{height:62px;background-size:cover;background-position:center}
 .chip .cost{position:absolute;top:-8px;right:-7px;z-index:1;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--red);color:#fff;border:2px solid var(--ink);font-family:var(--disp);font-size:13px;font-weight:700;transform:rotate(12deg)}
-.chip span{display:flex;align-items:center;justify-content:center;min-height:34px;padding:2px;font-family:var(--hand);font-weight:700;font-size:17px;line-height:1;text-align:center;overflow-wrap:anywhere;hyphens:auto}
+.chip span{display:flex;align-items:center;justify-content:center;min-height:34px;padding:2px;font-family:var(--hand);font-weight:700;font-size:16px;line-height:1;text-align:center;overflow-wrap:anywhere;hyphens:auto}
 .chip.poured{background:#FFF6C9}
 .chip.poured span{color:var(--red);font-size:15px;overflow-wrap:normal;word-break:normal}
 .chip.poured .pint{filter:brightness(.75)}
@@ -152,7 +152,6 @@ body.playing{overflow:hidden;position:fixed;inset:0;width:100%}
 .kb .play .chip .pint{height:28px}
 .kb .play .chip span{min-height:24px;font-size:14px}
 .kb .play .foot2{display:none}
-.kb .play input[type=text]{height:42px;font-size:24px}
 
 /* result + stamps */
 .result{position:relative;text-align:center;padding:22px 0 6px;min-height:200px}
@@ -186,6 +185,23 @@ body.playing{overflow:hidden;position:fixed;inset:0;width:100%}
 .board div+div{border-top:1px dashed rgba(244,241,234,.25)}
 .board div b{font-weight:700;font-size:26px;color:#FFE45C;font-variant-numeric:tabular-nums;background:#000;padding:0 10px;min-width:48px;text-align:center}
 .board div.lead span::before{content:"★ ";color:#FFE45C}
+
+/* answer slip */
+.answer{display:flex;align-items:center;gap:10px;background:var(--paper);color:var(--ink);border:2px solid var(--ink);border-bottom-width:5px;border-radius:var(--r);padding:4px 12px 6px;box-shadow:var(--shadow);cursor:text;transform:rotate(-.4deg);transition:box-shadow .15s}
+.answer .tag{font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:1.6px;text-transform:uppercase;color:var(--red);flex:none;padding-top:6px}
+.answer input[type=text]{color:var(--ink);border-bottom:2px dashed #B5AB98;height:46px;font-size:27px;padding:0 2px}
+.answer input[type=text]::placeholder{color:#A39A88}
+.answer input[type=text]:focus{border-bottom:2px solid var(--ink)}
+.answer .pencil{flex:none;font-size:20px;color:var(--ink);opacity:.7;padding-top:6px}
+.answer:focus-within{box-shadow:0 0 0 3px #FFE45C,var(--shadow)}
+.answer:not(:focus-within) .pencil{animation:nudge 1.6s ease-in-out infinite}
+@keyframes nudge{0%,100%{transform:translateX(0) rotate(0)}50%{transform:translateX(-4px) rotate(-12deg)}}
+.kb .play .answer{padding:2px 10px 4px}
+.kb .play .answer input[type=text]{height:40px;font-size:24px}
+.homebtn{height:30px;padding:0 10px;background:transparent;color:var(--paper);border:2px solid rgba(244,241,234,.5);border-radius:var(--r);font-family:var(--disp);font-weight:600;font-size:12px;letter-spacing:1.2px;text-transform:uppercase}
+.homebtn:active{background:rgba(0,0,0,.2)}
+.topbar .left{display:flex;align-items:center;gap:10px}
+.play .foot2{display:flex;justify-content:space-between;align-items:center}
 
 /* docked actions */
 .dock{position:sticky;bottom:0;z-index:2;margin:auto -16px 0;padding:16px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(27,67,50,0),var(--pitch2) 30%)}
@@ -241,6 +257,10 @@ function fitPlay(){
 window.addEventListener('orientationchange',()=>{fitPlay.full=0;setTimeout(fitPlay,300)});
 if(window.visualViewport){visualViewport.addEventListener('resize',fitPlay);visualViewport.addEventListener('scroll',fitPlay)}
 window.addEventListener('resize',fitPlay);
+app.addEventListener('click',e=>{
+  if(!e.target.closest('[data-home]'))return;
+  if(confirm('End this game and go back to the home screen? Scores will be lost.')){clearInterval(tick);setup()}
+});
 
 function setup(){
   screen(true);
@@ -304,7 +324,7 @@ function clubsHTML(hits,order){
   return `<div class="clubs" id="clubs">${list.map((ci,k)=>{const c=D.clubs[ci];const cls=hits?(hits.includes(ci)?' hit':' miss'):'';
     return `<div class="club${cls}"><div class="crest"><img src="https://tmssl.akamaized.net/images/wappen/head/${c[2]}.png" alt="" loading="lazy" onerror="this.style.visibility='hidden'"></div>${order?`<span class="ord">${k+1}</span>`:''}<span class="cn">${esc(c[0])}</span><small>${LEAGUE[c[1]]}</small></div>`}).join('')}</div>`;
 }
-function topbar(){return `<div class="topbar"><span>Round <b>${S.round}</b> of ${S.rounds}</span><span>${S.diff==='fun'?'Fun pub':'Hard mixed'}${S.modern?' · 2010+':''}</span></div>`}
+function topbar(){return `<div class="topbar"><div class="left"><button class="homebtn" data-home aria-label="Back to the home screen">‹ Home</button><span>Round <b>${S.round}</b> of ${S.rounds}</span></div><span>${S.diff==='fun'?'Fun pub':'Hard mixed'}${S.modern?' · 2010+':''}</span></div>`}
 const threes=()=>S.modern?[S.trio[7],S.trio[8]]:[S.trio[4],S.trio[5]];
 const clueOf=()=>S.trio[S.modern?10:9];
 
@@ -341,10 +361,10 @@ function startTurn(){
   <div class="turnbar" id="tb"><div class="who">${esc(S.names[p])}</div><div class="secs" id="secs">30</div><button class="passbtn" id="pass">Pass</button></div>
   <div class="thin" id="thin"><i id="barfill" style="width:100%"></i></div>
   <div class="chips">${CLUES.map(c=>`<button class="chip" data-k="${c.k}" ${c.ok?'':'disabled'} aria-label="${c.name} clue, costs ${c.cost||1} point${(c.cost||1)>1?'s':''}"><div class="pint" style="background-image:url('${c.img}');background-position:${c.pos||'center'}"></div><b class="cost">${c.ok?`−${c.cost||1}`:'n/a'}</b><span>${c.name}</span></button>`).join('')}</div>
-  <input type="text" id="guess" placeholder="Type a player, tap to lock in" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
+  <label class="answer" for="guess"><span class="tag">Answer</span><input type="text" id="guess" placeholder="Write a player…" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go"><span class="pencil" aria-hidden="true">✎</span></label>
   <div class="err" id="gerr" style="min-height:0;margin-top:4px"></div>
   <div class="sugg compact" id="sugg"></div>
-  <div class="foot2">Round ${S.round} of ${S.rounds} · ${S.diff==='fun'?'Fun pub':'Hard mixed'}${S.modern?' · 2010+':''}</div></div>`;
+  <div class="foot2"><span>Round ${S.round} of ${S.rounds} · ${S.diff==='fun'?'Fun pub':'Hard mixed'}${S.modern?' · 2010+':''}</span><button class="homebtn" data-home aria-label="Back to the home screen">‹ Home</button></div></div>`;
   const g=$('#guess'),sg=$('#sugg');fitPlay();g.focus({preventScroll:true});
   const card=i=>`<b>${esc(D.players[i][0])}</b><span>${esc(D.players[i][2]||'Former player')}</span>`;
   const draw=()=>{
