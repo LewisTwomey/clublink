@@ -61,15 +61,15 @@ button{font:600 15px var(--sans);border:0;cursor:pointer;color:var(--cream);back
 /* game */
 .topbar{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--mute);padding:4px 2px 12px}
 .topbar b{color:var(--brass);font-weight:600}
-.clubs{display:grid;gap:8px}
-.club{display:flex;align-items:center;gap:12px;background:var(--cream);color:#1d150d;border-radius:14px;padding:10px 14px 10px 10px;min-height:62px;box-shadow:0 6px 18px rgba(0,0,0,.35);transition:opacity .2s,background .2s}
-.crest{width:42px;height:42px;flex:none;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
-.crest img{width:30px;height:30px;object-fit:contain}
-.cn{flex:1;font-weight:700;font-size:19px;letter-spacing:-.2px;line-height:1.15}
-.club small{font-size:10.5px;font-weight:700;letter-spacing:1.2px;color:#8a7b66}
-.club.hit{background:#dff3e6;box-shadow:0 0 0 2px var(--good),0 6px 18px rgba(0,0,0,.35)}
+.clubs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.club{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;background:var(--cream);color:#1d150d;border-radius:12px;padding:8px 6px 7px;min-height:86px;box-shadow:0 4px 14px rgba(0,0,0,.35);transition:opacity .2s,background .2s}
+.crest{width:32px;height:32px;flex:none;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.crest img{width:24px;height:24px;object-fit:contain}
+.cn{font-weight:700;font-size:13.5px;line-height:1.15;letter-spacing:-.1px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+.club small{font-size:9px;font-weight:700;letter-spacing:1px;color:#8a7b66}
+.club.hit{background:#dff3e6;box-shadow:0 0 0 2px var(--good),0 4px 14px rgba(0,0,0,.35)}
 .club.miss{opacity:.32}
-.ord{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#1d150d;color:var(--brass);font-size:12px;font-weight:700;margin-right:8px;vertical-align:2px}
+.ord{position:absolute;top:5px;left:5px;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#1d150d;color:var(--brass);font-size:11px;font-weight:700}
 .turn{text-align:center;margin:22px 0 4px}
 .turn .pre{font-size:13px;color:var(--mute)}
 .who{font-family:var(--serif);font-size:40px;line-height:1.1;color:var(--brass)}
@@ -80,6 +80,26 @@ button{font:600 15px var(--sans);border:0;cursor:pointer;color:var(--cream);back
 .secs{font-variant-numeric:tabular-nums;font-weight:700;font-size:22px;width:34px;text-align:right}
 .clock.low .secs{color:var(--bad)}
 .err{color:var(--bad);font-size:14px;min-height:20px;margin-top:6px}
+.turnbar{display:flex;align-items:center;gap:10px;margin:12px 0 6px}
+.turnbar .who{font-size:28px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.turnbar .secs{width:auto;font-size:22px}
+.turnbar.low .secs{color:var(--bad)}
+.passbtn{height:36px;padding:0 14px;border:1px solid var(--line2);border-radius:10px;font-size:14px;color:var(--mute)}
+.thin{height:4px;background:rgba(244,234,216,.1);border-radius:2px;overflow:hidden;margin-bottom:10px}
+.thin i{display:block;height:100%;background:var(--brass);transition:width .25s linear}
+.thin.low i{background:var(--bad)}
+.chips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:10px}
+.chip{display:flex;align-items:center;gap:7px;min-height:44px;padding:6px 8px;border:1px solid var(--line2);border-radius:10px;background:rgba(28,20,14,.85);text-align:left}
+.chip svg{width:12px;height:28px;flex:none}
+.chip span{display:flex;flex-direction:column;font-size:12px;font-weight:600;line-height:1.2;min-width:0}
+.chip em{font-style:normal;font-size:10.5px;color:var(--brass);font-weight:600}
+.chip.poured{border-color:rgba(226,180,90,.55);background:rgba(226,180,90,.12)}
+.chip.poured span{color:var(--brass)}
+.chip.poured em{color:var(--bad)}
+.chip:disabled{opacity:.35}
+.sugg.compact button{padding:8px 12px;min-height:46px}
+.sugg.compact b{font-size:15px}
+.sugg.compact span{font-size:12px}
 .sugg{display:grid;gap:4px;margin-top:6px}
 .sugg button,.sugg .picked{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:rgba(28,20,14,.85)}
 .sugg button:active{background:rgba(226,180,90,.12)}
@@ -225,7 +245,7 @@ function nextRound(){
 function clubsHTML(hits,order){
   const list=order||S.trio.slice(0,3);
   return `<div class="clubs" id="clubs">${list.map((ci,k)=>{const c=D.clubs[ci];const cls=hits?(hits.includes(ci)?' hit':' miss'):'';
-    return `<div class="club${cls}"><div class="crest"><img src="https://tmssl.akamaized.net/images/wappen/head/${c[2]}.png" alt="" loading="lazy" onerror="this.style.visibility='hidden'"></div><span class="cn">${order?`<span class="ord">${k+1}</span>`:''}${esc(c[0])}</span><small>${LEAGUE[c[1]]}</small></div>`}).join('')}</div>`;
+    return `<div class="club${cls}"><div class="crest"><img src="https://tmssl.akamaized.net/images/wappen/head/${c[2]}.png" alt="" loading="lazy" onerror="this.style.visibility='hidden'"></div>${order?`<span class="ord">${k+1}</span>`:''}<span class="cn">${esc(c[0])}</span><small>${LEAGUE[c[1]]}</small></div>`}).join('')}</div>`;
 }
 function topbar(){return `<div class="topbar"><span>Round <b>${S.round}</b> of ${S.rounds}</span><span>${S.diff}${S.modern?' · 2010+':''}</span></div>`}
 const threes=()=>S.modern?[S.trio[7],S.trio[8]]:[S.trio[4],S.trio[5]];
@@ -253,45 +273,41 @@ function startTurn(){
   const co=clueOf(),pi=co?co[0]:threes()[0][0],cp=D.players[pi];
   const nat=cp[3],pos=cp[4],ini=cp[0].split(/\s+/).map(w=>w[0]).join('.')+'.';
   const CLUES=[
-    {k:'order',name:'Club order',ok:!!co,show:()=>'Clubs re-ordered: <b>the order they joined them</b>'},
-    {k:'nat',name:'Nationality',ok:!!nat,show:()=>`Nationality: <b>${esc(nat)}</b>`},
-    {k:'pos',name:'Position & initials',ok:true,show:()=>`${pos?`Position: <b>${esc(pos)}</b> · `:''}Initials: <b>${esc(ini)}</b>`},
+    {k:'order',name:'Club order',ok:!!co,val:()=>'Shown 1–2–3'},
+    {k:'nat',name:'Nationality',ok:!!nat,val:()=>esc(nat)},
+    {k:'pos',name:'Position',ok:true,val:()=>`${pos?esc(pos)+' · ':''}${esc(ini)}`},
   ];
-  app.innerHTML=`${topbar()}<div id="clubwrap">${clubsHTML()}</div>
-  <div class="turn"><div class="who">${esc(S.names[p])}</div></div>
-  <div class="clock" id="clock"><div class="bar"><i id="barfill" style="width:100%"></i></div><div class="secs" id="secs">30</div></div>
-  <input type="text" id="guess" placeholder="Start typing a player" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
-  <div class="sugg" id="sugg"></div>
-  <div class="err" id="gerr"></div>
-  <button class="btn" id="sub">Lock it in</button>
-  <button class="btn ghost" id="pass">Pass</button>
-  <div class="taps"><div class="taphead"><b>Clues on tap</b><span>1 point a pint</span></div>
-    <div class="tapline">${CLUES.map((c,i)=>`<button class="tap" data-k="${c.k}" ${c.ok?'':'disabled'} aria-label="${c.name} clue, costs 1 point">${tapSVG(TAPCOL[i],'')}<span>${c.name}</span><em>${c.ok?'−1 pt':'No data'}</em></button>`).join('')}</div>
-  </div>
-  <div class="cluebox" id="cluebox"></div>`;
+  app.innerHTML=`<div id="clubwrap">${clubsHTML()}</div>
+  <div class="turnbar" id="tb"><div class="who">${esc(S.names[p])}</div><div class="secs" id="secs">30</div><button class="passbtn" id="pass">Pass</button></div>
+  <div class="thin" id="thin"><i id="barfill" style="width:100%"></i></div>
+  <div class="chips">${CLUES.map((c,i)=>`<button class="chip" data-k="${c.k}" ${c.ok?'':'disabled'} aria-label="${c.name} clue, costs 1 point">${tapSVG(TAPCOL[i],'')}<span>${c.name}<em>${c.ok?'Clue −1 pt':'No data'}</em></span></button>`).join('')}</div>
+  <input type="text" id="guess" placeholder="Type a player, tap to lock in" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
+  <div class="err" id="gerr" style="min-height:0;margin-top:4px"></div>
+  <div class="sugg compact" id="sugg"></div>
+  <div class="dim" style="margin-top:10px">Round ${S.round} of ${S.rounds} · ${S.diff}${S.modern?' · 2010+':''}</div>`;
   const g=$('#guess'),sg=$('#sugg');g.focus();
   const card=i=>`<b>${esc(D.players[i][0])}</b><span>${esc(D.players[i][2]||'Former player')}</span>`;
   const draw=()=>{
-    const q=norm(g.value);sel=null;$('#gerr').textContent='';
+    const q=norm(g.value);$('#gerr').textContent='';
     if(q.length<2){sg.innerHTML='';return}
-    const res=search(q);
+    const res=search(q,5);
     sg.innerHTML=res.length?res.map(i=>`<button data-i="${i}">${card(i)}</button>`).join(''):`<div class="none">No player found</div>`;
-    sg.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{sel=+b.dataset.i;g.value=D.players[sel][0];sg.innerHTML=`<div class="picked">${card(sel)}</div>`});
+    sg.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>submit(+b.dataset.i));
   };
   g.oninput=draw;
-  g.onkeydown=e=>{if(e.key==='Enter'){if(sel==null){const f=sg.querySelector('[data-i]');if(f)f.click()}else submit()}};
-  const update=()=>{const left=Math.max(0,end-Date.now());const s=Math.ceil(left/1000);$('#secs').textContent=s;$('#barfill').style.width=(left/300)+'%';$('#clock').classList.toggle('low',s<=10);if(left<=0){clearInterval(tick);resolve(null,'Time’s up',null,used.size)}};
+  g.onkeydown=e=>{if(e.key==='Enter'){const f=sg.querySelector('[data-i]');if(f)f.click();else $('#gerr').textContent='Type a player and tap their name'}};
+  const update=()=>{const left=Math.max(0,end-Date.now());const s=Math.ceil(left/1000);$('#secs').textContent=s;$('#barfill').style.width=(left/300)+'%';$('#thin').classList.toggle('low',s<=10);$('#tb').classList.toggle('low',s<=10);if(left<=0){clearInterval(tick);resolve(null,'Time’s up',null,used.size)}};
   clearInterval(tick);tick=setInterval(update,250);
   $('#pass').onclick=()=>{clearInterval(tick);resolve(null,'Passed',null,used.size)};
-  app.querySelectorAll('.tap').forEach(b=>b.onclick=()=>{
+  app.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{
     const k=b.dataset.k;if(used.has(k))return;
     used.add(k);b.classList.add('poured');
+    const c=CLUES.find(x=>x.k===k);
+    b.querySelector('span').innerHTML=`${c.val()}<em>−1 pt</em>`;
     if(k==='order')$('#clubwrap').innerHTML=clubsHTML(null,co[1]);
-    $('#cluebox').innerHTML=CLUES.filter(c=>used.has(c.k)).map(c=>`<div>${c.show()}</div>`).join('');
+    g.focus();
   });
-  $('#sub').onclick=submit;
-  function submit(){
-    if(sel==null){$('#gerr').textContent=norm(g.value).length<2?'Start typing a player first':'Pick a player from the list';return}
+  function submit(sel){
     if(S.answers.some(a=>a.player===sel)){$('#gerr').textContent=`${D.players[sel][0]} has already been said this round`;return}
     clearInterval(tick);
     const s=D.players[sel][1].filter(c=>S.trio.slice(0,3).includes(c)).length;
@@ -299,9 +315,9 @@ function startTurn(){
   }
 }
 
-function search(q){
+function search(q,max=8){
   const qt=q.split(' '),out=[];
-  for(let i=0;i<IDX.length&&out.length<8;i++){
+  for(let i=0;i<IDX.length&&out.length<max;i++){
     const t=IDX[i].t;
     if(qt.every(w=>t.some(x=>x.startsWith(w))))out.push(i);
   }
