@@ -37,6 +37,7 @@ button{font:600 16px Inter,sans-serif;border:0;border-radius:12px;cursor:pointer
 .club{background:var(--chalk);color:#10261a;border-radius:10px;padding:14px 16px;font-family:'Archivo Black',sans-serif;font-size:22px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;gap:10px}
 .badge{width:34px;height:34px;object-fit:contain;flex:none}
 .cn{flex:1}
+.ord{font-style:normal;display:inline-flex;width:24px;height:24px;border-radius:50%;background:var(--gold);color:#1b1404;font:600 14px Inter,sans-serif;align-items:center;justify-content:center;margin-right:8px;vertical-align:3px}
 .ac{position:relative}
 .sugg{display:grid;gap:4px;margin-top:6px}
 .sugg button,.sugg .picked{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#0b2015}
@@ -87,14 +88,14 @@ let D,IDX,S;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const norm=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/ø/g,'o').replace(/ß/g,'ss').replace(/ł/g,'l').toLowerCase().replace(/[^a-z ]/g,' ').replace(/\s+/g,' ').trim();
 
-function save(){try{localStorage.setItem('tc_setup',JSON.stringify({names:S.names,rounds:S.rounds,diff:S.diff}))}catch(e){}}
+function save(){try{localStorage.setItem('tc_setup',JSON.stringify({names:S.names,rounds:S.rounds,diff:S.diff,modern:S.modern}))}catch(e){}}
 function loadSetup(){try{return JSON.parse(localStorage.getItem('tc_setup'))}catch(e){return null}}
 
 async function init(){
   D=await (await fetch('data.json')).json();
   IDX=D.players.map(p=>{const n=norm(p[0]);return{n,t:n.split(' ')}});
   const s=loadSetup()||{};
-  S={names:s.names&&s.names.length?s.names:['',''],rounds:s.rounds||5,diff:s.diff||'mixed'};
+  S={names:s.names&&s.names.length?s.names:['',''],rounds:s.rounds||5,diff:s.diff||'mixed',modern:s.modern!==false};
   setup();
 }
 
@@ -107,6 +108,8 @@ function setup(){
   <div class="seg" id="rounds">${[3,5,10,15].map(n=>`<button data-v="${n}">${n}</button>`).join('')}</div>
   <div class="label">Difficulty</div>
   <div class="seg" id="diff">${['easy','medium','hard','mixed'].map(n=>`<button data-v="${n}">${n[0].toUpperCase()+n.slice(1)}</button>`).join('')}</div>
+  <div class="label">Three-pointers</div>
+  <div class="seg three" id="modern" style="grid-template-columns:1fr 1fr"><button data-v="true">2010 onwards</button><button data-v="false">All eras</button></div>
   <div class="err" id="serr"></div>
   <button class="btn" id="go">Kick off</button>`;
   const draw=()=>{
@@ -116,8 +119,8 @@ function setup(){
     $('#addp').classList.toggle('hidden',S.names.length>=8);
   };
   const seg=(id,key)=>{const el=$('#'+id);const upd=()=>el.querySelectorAll('button').forEach(b=>b.classList.toggle('on',String(S[key])===b.dataset.v));
-    el.querySelectorAll('button').forEach(b=>b.onclick=()=>{S[key]=key==='rounds'?+b.dataset.v:b.dataset.v;upd()});upd()};
-  draw();seg('rounds','rounds');seg('diff','diff');
+    el.querySelectorAll('button').forEach(b=>b.onclick=()=>{S[key]=key==='rounds'?+b.dataset.v:key==='modern'?b.dataset.v==='true':b.dataset.v;upd()});upd()};
+  draw();seg('rounds','rounds');seg('diff','diff');seg('modern','modern');
   $('#addp').onclick=()=>{S.names.push('');draw();$('#plist').querySelector('input:last-of-type')?.focus()};
   $('#go').onclick=()=>{
     const names=S.names.map(n=>n.trim()).filter(Boolean);
@@ -131,7 +134,7 @@ function setup(){
 
 function pickTrio(){
   let tier=S.diff==='easy'?0:S.diff==='medium'?1:S.diff==='hard'?2:(()=>{const r=Math.random();return r<.45?0:r<.85?1:2})();
-  const pool=D.trios.filter(t=>t[3]===tier);
+  const ti=S.modern?6:3;const pool=D.trios.filter(t=>t[ti]===tier);
   for(let k=0;k<50;k++){const t=pool[Math.floor(Math.random()*pool.length)];const key=t.slice(0,3).join();if(!S.used.has(key)){S.used.add(key);return t}}
   return pool[Math.floor(Math.random()*pool.length)];
 }
@@ -146,10 +149,13 @@ function nextRound(){
   turnIntro();
 }
 
-function clubsHTML(hits){
-  return `<div class="clubs">${S.trio.slice(0,3).map(ci=>{const c=D.clubs[ci];const cls=hits?(hits.includes(ci)?' hit':' miss'):'';return `<div class="club${cls}"><img class="badge" src="https://tmssl.akamaized.net/images/wappen/head/${c[2]}.png" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span class="cn">${esc(c[0])}</span><small>${LEAGUE[c[1]]}</small></div>`}).join('')}</div>`;
+function clubsHTML(hits,order){
+  const list=order||S.trio.slice(0,3);
+  return `<div class="clubs" id="clubs">${list.map((ci,k)=>{const c=D.clubs[ci];const cls=hits?(hits.includes(ci)?' hit':' miss'):'';return `<div class="club${cls}"><img class="badge" src="https://tmssl.akamaized.net/images/wappen/head/${c[2]}.png" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span class="cn">${order?`<em class="ord">${k+1}</em>`:''}${esc(c[0])}</span><small>${LEAGUE[c[1]]}</small></div>`}).join('')}</div>`;
 }
-function topbar(){return `<div class="topbar"><span>Round ${S.round} of ${S.rounds}</span><span>${S.diff}</span></div>`}
+function topbar(){return `<div class="topbar"><span>Round ${S.round} of ${S.rounds}</span><span>${S.diff}${S.modern?' · 2010+':''}</span></div>`}
+const threes=()=>S.modern?[S.trio[7],S.trio[8]]:[S.trio[4],S.trio[5]];
+const clueOf=()=>S.trio[S.modern?10:9];
 
 function turnIntro(){
   const p=S.order[S.turn];
@@ -189,12 +195,19 @@ function startTurn(){
   clearInterval(tick);tick=setInterval(update,250);
   $('#pass').onclick=()=>{clearInterval(tick);resolve(null,'Passed')};
   $('#clue').onclick=()=>{
-    clue=Math.min(clue+1,2);const cl=D.players[S.trio[4][0]];
+    const co=clueOf(),pi=co?co[0]:threes()[0][0],cl=D.players[pi];
     const nat=cl[3],pos=cl[4],ini=cl[0].split(' ').map(w=>w[0]).join('.')+'.';
-    const lines=[nat?`Nationality: <b>${esc(nat)}</b>`:pos?`Position: <b>${esc(pos)}</b>`:`Initials: <b>${esc(ini)}</b>`];
-    if(clue>1)lines.push(nat&&pos?`Position: <b>${esc(pos)}</b> · Initials: <b>${esc(ini)}</b>`:`Initials: <b>${esc(ini)}</b>`);
-    const box=$('#cluebox');box.classList.remove('hidden');box.innerHTML=`<div class="label" style="margin:0 0 6px">A three-pointer</div>${lines.join('<br>')}`;
-    $('#clue').textContent=clue<2?'Another clue':'No more clues';
+    const steps=[];
+    steps.push(nat?`Nationality: <b>${esc(nat)}</b>`:pos?`Position: <b>${esc(pos)}</b>`:`Initials: <b>${esc(ini)}</b>`);
+    if(co)steps.push('order');
+    steps.push(nat&&pos?`Position: <b>${esc(pos)}</b> · Initials: <b>${esc(ini)}</b>`:`Initials: <b>${esc(ini)}</b>`);
+    if(clue>=steps.length)return;
+    clue++;
+    const shown=steps.slice(0,clue);
+    if(shown.includes('order'))$('#clubs').outerHTML=clubsHTML(null,co[1]);
+    const box=$('#cluebox');box.classList.remove('hidden');
+    box.innerHTML=`<div class="label" style="margin:0 0 6px">One three-pointer</div>${shown.map(x=>x==='order'?'Clubs now shown in the <b>order they played for them</b>':x).join('<br>')}`;
+    $('#clue').textContent=clue<steps.length?'Another clue':'No more clues';
   };
   $('#sub').onclick=submit;
   function submit(){
@@ -242,14 +255,14 @@ function standings(){
 }
 
 function roundEnd(){
-  const t=S.trio,tr=t.slice(0,3),three=t[4],total=t[5];
+  const t=S.trio,tr=t.slice(0,3),[three,total]=threes();
   const two=[];
-  for(let i=0;i<D.players.length&&two.length<12;i++){const c=D.players[i][1];let n=0;for(const x of tr)if(c.includes(x))n++;if(n===2)two.push(i)}
+  for(let i=0;i<D.players.length&&two.length<12;i++){const c=D.players[i][1];if(S.modern&&!D.players[i][5])continue;let n=0;for(const x of tr)if(c.includes(x))n++;if(n===2)two.push(i)}
   const pairs=i=>tr.filter(c=>D.players[i][1].includes(c)).map(c=>D.clubs[c][0]).join(' + ');
   app.innerHTML=`${topbar()}${clubsHTML()}
   <div class="label">This round</div>
   <div class="card ans">${S.answers.map(a=>`<div><b>${esc(S.names[a.who])}</b> · ${a.player!=null?esc(D.players[a.player][0]):esc(a.reason)} · ${a.pts} pt${a.pts===1?'':'s'}</div>`).join('')}</div>
-  <div class="label">3 points: played for all three</div>
+  <div class="label">3 points: played for all three${S.modern?' (2010+)':''}</div>
   <div class="card ans">${three.map(i=>esc(D.players[i][0])).join(', ')}${total>three.length?` and ${total-three.length} more`:''}</div>
   <div class="label">2 points</div>
   <div class="card ans">${two.map(i=>`<div>${esc(D.players[i][0])} <span class="dim">· ${esc(pairs(i))}</span></div>`).join('')||'None'}</div>

@@ -53,7 +53,19 @@ def nm(pid):
         v=d.get(pid)
         if isinstance(v,str): return v
     return '?'
-players=[[nm(pid), sorted(cid2i[c] for c in hist[pid]), *info(pid)] for pid in pids]
+# first-seen date per (player, club), and who counts as a 2010+ player
+first={}
+def seen(pid,cid,d):
+    if cid in cid2i and isinstance(d,str):
+        k=(pid,cid)
+        if k not in first or d<first[k]: first[k]=d
+for pid,fc,tc,d in zip(t.player_id,t.from_club_id,t.to_club_id,t.transfer_date):
+    seen(pid,tc,d)
+    if isinstance(d,str): seen(pid,fc,str(int(d[:4])-1)+d[4:])
+a=pd.read_csv('/mnt/user-data/uploads/appearances__1_.csv',usecols=['player_id','player_club_id','date'])
+for (pid,cid),d in a.groupby(['player_id','player_club_id']).date.min().items(): seen(pid,cid,d)
+modern=set(p.player_id)|set(t.player_id[t.transfer_date>='2010'])
+players=[[nm(pid), sorted(cid2i[c] for c in hist[pid]), *info(pid), 1 if pid in modern else 0] for pid in pids]
 links=collections.defaultdict(list)
 for pid in pids:
     s=sorted(cid2i[c] for c in hist[pid])
@@ -73,11 +85,20 @@ ci={c[0]:i for i,c in enumerate(clubs)}
 top=set(ci[n] for n in BIG)
 print('top six per league:',sorted(clubs[i][0] for i in top))
 trios=[]
+def tierof(ls,tr):
+    if not ls: return -1
+    b=mv.get(pids[ls[0]],0); n=len(ls)
+    return (0 if (b>=2e7 or n>=3) else 1) if set(tr)<=top else 2
+def clue(ls,tr):
+    for i in ls[:40]:
+        pid=pids[i]; ks=[(pid,pool_ids[c]) for c in tr]
+        if all(k in first for k in ks):
+            return [i,[c for _,c in sorted(zip([first[k] for k in ks],tr))]]
+    return None
+pool_ids=list(pool.club_id)
 for tr,ls in links.items():
-    b=mv.get(pids[ls[0]],0)
-    n=len(ls)
-    big=set(tr)<=top
-    tier=(0 if (b>=2e7 or n>=3) else 1) if big else 2
-    trios.append([*tr,tier,ls[:5],len(ls)])
+    lm=[i for i in ls if players[i][5]]
+    trios.append([*tr,tierof(ls,tr),ls[:5],len(ls),tierof(lm,tr),lm[:5],len(lm),clue(ls,tr),clue(lm,tr)])
+print('modern tiers',collections.Counter(x[6] for x in trios),'clues',sum(1 for x in trios if x[9]),sum(1 for x in trios if x[10]))
 print(len(clubs),len(players),len(trios),collections.Counter(x[3] for x in trios))
 json.dump({'clubs':clubs,'players':players,'trios':trios},open('site/data.json','w'),ensure_ascii=False,separators=(',',':'))
