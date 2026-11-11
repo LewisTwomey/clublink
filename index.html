@@ -198,8 +198,8 @@ function startTurn(){
     const co=clueOf(),pi=co?co[0]:threes()[0][0],cl=D.players[pi];
     const nat=cl[3],pos=cl[4],ini=cl[0].split(' ').map(w=>w[0]).join('.')+'.';
     const steps=[];
-    steps.push(nat?`Nationality: <b>${esc(nat)}</b>`:pos?`Position: <b>${esc(pos)}</b>`:`Initials: <b>${esc(ini)}</b>`);
     if(co)steps.push('order');
+    steps.push(nat?`Nationality: <b>${esc(nat)}</b>`:pos?`Position: <b>${esc(pos)}</b>`:`Initials: <b>${esc(ini)}</b>`);
     steps.push(nat&&pos?`Position: <b>${esc(pos)}</b> · Initials: <b>${esc(ini)}</b>`:`Initials: <b>${esc(ini)}</b>`);
     if(clue>=steps.length)return;
     clue++;
