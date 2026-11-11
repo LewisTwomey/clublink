@@ -210,6 +210,14 @@ body.playing{overflow:hidden;position:fixed;inset:0;width:100%}
 .topbar .left{display:flex;align-items:center;gap:10px}
 .play .foot2{display:flex;justify-content:space-between;align-items:center}
 
+.mic{flex:none;width:42px;height:42px;border-radius:50%;background:var(--red);color:#fff;border:2px solid var(--ink);border-bottom-width:4px;display:grid;place-items:center;margin-top:4px}
+.mic svg{width:22px;height:22px}
+.mic:active{transform:translateY(2px);border-bottom-width:2px}
+.mic.on{background:var(--lime);animation:pulse .6s ease-in-out infinite alternate}
+.answer.has-mic .pencil{display:none}
+.kb .play .mic{width:36px;height:36px}
+.listening{font-family:var(--hand);font-size:20px;color:var(--paper);padding:4px 2px}
+
 /* docked actions */
 .dock{position:sticky;bottom:0;z-index:2;margin:auto -16px 0;padding:16px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(27,67,50,0),var(--pitch2) 30%)}
 .dock .btn{margin-top:0}
@@ -243,14 +251,14 @@ function tapSVG(col,label){
 const TAPS='https://burst.shopifycdn.com/photos/beer-taps.jpg?width=900&format=pjpg&exif=0&iptc=0';
 const rail=()=>`<figure class="polaroid solo"><img src="${TAPS}" alt="A row of beer taps"><figcaption>Last orders</figcaption></figure>`;
 
-function save(){try{localStorage.setItem('tc_setup',JSON.stringify({names:S.names,rounds:S.rounds,diff:S.diff,modern:S.modern}))}catch(e){}}
+function save(){try{localStorage.setItem('tc_setup',JSON.stringify({names:S.names,rounds:S.rounds,diff:S.diff,modern:S.modern,timer:S.timer}))}catch(e){}}
 function loadSetup(){try{return JSON.parse(localStorage.getItem('tc_setup'))}catch(e){return null}}
 
 async function init(){
   D=await (await fetch('data.json')).json();
   IDX=D.players.map(p=>{const n=norm(p[0]);return{n,t:n.split(' ')}});
   const s=loadSetup()||{};
-  S={names:s.names&&s.names.length?s.names:['',''],rounds:s.rounds||5,diff:['fun','hard'].includes(s.diff)?s.diff:'fun',modern:s.modern!==false};
+  S={names:s.names&&s.names.length?s.names:['',''],rounds:s.rounds||5,diff:['fun','hard'].includes(s.diff)?s.diff:'fun',modern:s.modern!==false,timer:[0,30,60].includes(s.timer)?s.timer:30};
   setup();
 }
 const screen=(home)=>{document.body.classList.remove('playing','kb');document.body.classList.toggle('home',!!home);window.scrollTo(0,0)};
@@ -287,6 +295,8 @@ function setup(){
   <p class="hint">Fun pub mode sticks to the top six clubs in each league. Hard mixed throws in every club.</p>
   <div class="label">Three-pointers</div>
   <div class="seg two" id="modern"><button data-v="true">2010 onwards</button><button data-v="false">All eras</button></div>
+  <div class="label">Timer</div>
+  <div class="seg" id="timer" style="grid-template-columns:repeat(3,1fr)"><button data-v="30">30 sec</button><button data-v="60">1 min</button><button data-v="0">No timer</button></div>
   <p class="foot">Clues cost a point each, initials cost two. Beer and tap photos from Burst. Player data from Transfermarkt and Wikidata.</p>
   <div class="dock"><div class="err" id="serr" style="min-height:0;margin:0 0 6px"></div><button class="btn" id="go">Kick off</button></div>`;
   const draw=()=>{
@@ -296,8 +306,8 @@ function setup(){
     $('#addp').classList.toggle('hidden',S.names.length>=8);
   };
   const seg=(id,key)=>{const el=$('#'+id);const upd=()=>el.querySelectorAll('button').forEach(b=>b.classList.toggle('on',String(S[key])===b.dataset.v));
-    el.querySelectorAll('button').forEach(b=>b.onclick=()=>{S[key]=key==='rounds'?+b.dataset.v:key==='modern'?b.dataset.v==='true':b.dataset.v;upd()});upd()};
-  draw();seg('rounds','rounds');seg('diff','diff');seg('modern','modern');
+    el.querySelectorAll('button').forEach(b=>b.onclick=()=>{S[key]=key==='rounds'||key==='timer'?+b.dataset.v:key==='modern'?b.dataset.v==='true':b.dataset.v;upd()});upd()};
+  draw();seg('rounds','rounds');seg('diff','diff');seg('modern','modern');seg('timer','timer');
   $('#addp').onclick=()=>{S.names.push('');draw();const all=$('#plist').querySelectorAll('input');all[all.length-1].focus()};
   $('#go').onclick=()=>{
     const names=S.names.map(n=>n.trim()).filter(Boolean);
@@ -347,11 +357,11 @@ function turnIntro(){
   $('#start').onclick=startTurn;
 }
 
-let tick;
+let tick,stopMic=null;
 function startTurn(){
   screen(false);
   const p=S.order[S.turn];
-  const end=Date.now()+30000;
+  const T=S.timer,end=T?Date.now()+T*1000:0;
   let sel=null;
   const used=new Set();
   const cost=()=>CLUES.filter(c=>used.has(c.k)).reduce((t,c)=>t+(c.cost||1),0);
@@ -365,10 +375,10 @@ function startTurn(){
   ];
   document.body.classList.add('playing');
   app.innerHTML=`<div class="play" id="play"><div id="clubwrap">${clubsHTML()}</div>
-  <div class="turnbar" id="tb"><div class="who">${esc(S.names[p])}</div><div class="secs" id="secs">30</div><button class="passbtn" id="pass">Pass</button></div>
-  <div class="thin" id="thin"><i id="barfill" style="width:100%"></i></div>
+  <div class="turnbar" id="tb"><div class="who">${esc(S.names[p])}</div><div class="secs${T?'':' hidden'}" id="secs">${T}</div><button class="passbtn" id="pass">Pass</button></div>
+  <div class="thin${T?'':' hidden'}" id="thin"><i id="barfill" style="width:100%"></i></div>
   <div class="chips">${CLUES.map(c=>`<button class="chip" data-k="${c.k}" ${c.ok?'':'disabled'} aria-label="${c.name} clue, costs ${c.cost||1} point${(c.cost||1)>1?'s':''}"><div class="pint" style="background-image:url('${c.img}');background-position:${c.pos||'center'}"></div><b class="cost">${c.ok?`−${c.cost||1}`:'n/a'}</b><span>${c.name}</span></button>`).join('')}</div>
-  <label class="answer" for="guess"><span class="tag">Answer</span><input type="text" id="guess" placeholder="Write a player…" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go"><span class="pencil" aria-hidden="true">✎</span></label>
+  <label class="answer" for="guess"><span class="tag">Answer</span><input type="text" id="guess" placeholder="Write a player…" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go"><span class="pencil" aria-hidden="true">✎</span><button type="button" class="mic hidden" id="mic" aria-label="Say the player's name"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg></button></label>
   <div class="err" id="gerr" style="min-height:0;margin-top:4px"></div>
   <div class="sugg compact" id="sugg"></div>
   <div class="foot2"><span>Round ${S.round} of ${S.rounds} · ${S.diff==='fun'?'Fun pub':'Hard mixed'}${S.modern?' · 2010+':''}</span><button class="homebtn" data-home aria-label="Back to the home screen">‹ Home</button></div></div>`;
@@ -377,15 +387,19 @@ function startTurn(){
   const draw=()=>{
     const q=norm(g.value);$('#gerr').textContent='';
     if(q.length<2){sg.innerHTML='';return}
-    const res=search(q,5);
+    let res=search(q,5);
+    if(res.length<5){const w=q.split(' ').pop();if(q.includes(' '))for(const i of search(w,5))if(!res.includes(i))res.push(i);
+      if(res.length<5&&w.length>=4)for(const i of fuzzy(w,8))if(!res.includes(i))res.push(i);}
+    if(q.includes(' ')){const ws=q.split(' ').slice(0,-1),sc=i=>ws.filter(w=>IDX[i].t.some(x=>x.startsWith(w))).length;res=res.map((i,k)=>[i,k]).sort((x,y)=>sc(y[0])-sc(x[0])||x[1]-y[1]).map(x=>x[0])}
+    res=res.slice(0,5);
     sg.innerHTML=res.length?res.map(i=>`<button data-i="${i}">${card(i)}</button>`).join(''):`<div class="none">No player found</div>`;
     sg.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>submit(+b.dataset.i));
   };
   g.oninput=draw;
   g.onkeydown=e=>{if(e.key==='Enter'){const f=sg.querySelector('[data-i]');if(f)f.click();else $('#gerr').textContent='Type a player and tap their name'}};
-  const update=()=>{const left=Math.max(0,end-Date.now());const s=Math.ceil(left/1000);$('#secs').textContent=s;$('#barfill').style.width=(left/300)+'%';$('#thin').classList.toggle('low',s<=10);$('#tb').classList.toggle('low',s<=10);if(left<=0){clearInterval(tick);resolve(null,'Time’s up',null,cost())}};
+  const update=()=>{if(!T)return;const left=Math.max(0,end-Date.now());const s=Math.ceil(left/1000);$('#secs').textContent=s;$('#barfill').style.width=(left/(T*10))+'%';$('#thin').classList.toggle('low',s<=10);$('#tb').classList.toggle('low',s<=10);if(left<=0){clearInterval(tick);if(stopMic)stopMic();resolve(null,'Time’s up',null,cost())}};
   clearInterval(tick);tick=setInterval(update,250);
-  $('#pass').onclick=()=>{clearInterval(tick);resolve(null,'Passed',null,cost())};
+  $('#pass').onclick=()=>{clearInterval(tick);if(stopMic)stopMic();resolve(null,'Passed',null,cost())};
   app.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{
     const k=b.dataset.k;if(used.has(k))return;
     used.add(k);b.classList.add('poured');
@@ -394,7 +408,25 @@ function startTurn(){
     if(k==='order')$('#clubwrap').innerHTML=clubsHTML(null,co[1]);
     if(document.activeElement===g)g.focus({preventScroll:true});
   });
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(SR){
+    const mic=$('#mic');mic.classList.remove('hidden');$('.answer').classList.add('has-mic');
+    let rec=null;
+    const stop=()=>{if(rec){try{rec.stop()}catch(e){}}};
+    mic.onclick=e=>{
+      e.preventDefault();e.stopPropagation();
+      if(rec){stop();return}
+      rec=new SR();rec.lang='en-GB';rec.interimResults=true;rec.maxAlternatives=1;rec.continuous=false;
+      mic.classList.add('on');g.blur();sg.innerHTML='<div class="listening">Listening… say the player</div>';
+      rec.onresult=ev=>{let t='';for(const r of ev.results)t+=r[0].transcript;g.value=t.replace(/[.,!?]/g,'').trim();draw()};
+      rec.onerror=ev=>{$('#gerr').textContent=ev.error==='not-allowed'?'Microphone blocked. Allow it in your browser settings, or type instead.':'Didn’t catch that. Try again or type it.'};
+      rec.onend=()=>{mic.classList.remove('on');rec=null;if(!g.value)sg.innerHTML=''};
+      try{rec.start()}catch(err){mic.classList.remove('on');rec=null}
+    };
+    stopMic=stop;
+  }
   function submit(sel){
+    if(typeof stopMic==='function')stopMic();
     if(S.answers.some(a=>a.player===sel)){$('#gerr').textContent=`${D.players[sel][0]} has already been said this round`;return}
     clearInterval(tick);
     const s=D.players[sel][1].filter(c=>S.trio.slice(0,3).includes(c)).length;
@@ -402,6 +434,12 @@ function startTurn(){
   }
 }
 
+function lev(a,b,cap){if(Math.abs(a.length-b.length)>cap)return cap+1;let prev=[...Array(b.length+1).keys()];for(let i=1;i<=a.length;i++){const cur=[i];let mn=i;for(let j=1;j<=b.length;j++){cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));if(cur[j]<mn)mn=cur[j]}if(mn>cap)return cap+1;prev=cur}return prev[b.length]}
+function fuzzy(w,max){
+  const cap=w.length>=6?2:1,out=[],lim=Math.min(IDX.length,25000);
+  for(let i=0;i<lim&&out.length<max;i++){const t=IDX[i].t;if(t.some(x=>x.length>=3&&lev(w,x,cap)<=cap))out.push(i)}
+  return out;
+}
 function search(q,max=8){
   const qt=q.split(' '),out=[];
   for(let i=0;i<IDX.length&&out.length<max;i++){
