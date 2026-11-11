@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Three Clubs</title>
+<meta name="description" content="Name a player who played for all three clubs.">
+<meta name="theme-color" content="#0f2a1d">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f2a1d;--card:#163a29;--line:#2a5a42;--ink:#f3f1e6;--mute:#a9c2b3;--chalk:#f3f1e6;--gold:#f2c14e;--good:#5fd68a;--bad:#ff7a6b;--r:14px}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
+body{min-height:100dvh;background-image:repeating-linear-gradient(90deg,transparent 0 56px,rgba(255,255,255,.025) 56px 112px)}
+main{max-width:480px;margin:0 auto;padding:20px 16px 40px}
+h1{font-family:'Archivo Black',sans-serif;font-size:40px;line-height:1;letter-spacing:-.5px;text-transform:uppercase}
+h1 span{color:var(--gold)}
+h2{font-family:'Archivo Black',sans-serif;font-size:22px;text-transform:uppercase;letter-spacing:.2px}
+.sub{color:var(--mute);margin-top:8px;font-size:15px;line-height:1.5}
+.label{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--mute);margin:22px 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+input[type=text]{width:100%;height:50px;border-radius:10px;border:1px solid var(--line);background:#0b2015;color:var(--ink);font:500 17px Inter,sans-serif;padding:0 14px;outline:none}
+input[type=text]:focus{border-color:var(--gold)}
+button{font:600 16px Inter,sans-serif;border:0;border-radius:12px;cursor:pointer;color:var(--ink);background:transparent}
+.btn{width:100%;height:54px;background:var(--gold);color:#1b1404;font-size:17px;margin-top:14px}
+.btn:active{transform:scale(.98)}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.seg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.seg.three{grid-template-columns:repeat(3,1fr)}
+.seg button{height:44px;border:1px solid var(--line);font-size:14px}
+.seg button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.prow{display:flex;gap:8px;margin-bottom:8px}
+.prow button{width:50px;flex:none;border:1px solid var(--line);color:var(--mute);font-size:20px}
+.add{height:44px;width:100%;border:1px dashed var(--line);color:var(--mute)}
+.clubs{display:grid;gap:8px;margin:14px 0}
+.club{background:var(--chalk);color:#10261a;border-radius:10px;padding:14px 16px;font-family:'Archivo Black',sans-serif;font-size:22px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.club small{font:600 11px Inter,sans-serif;letter-spacing:1px;color:#5b7a69;flex:none}
+.club.hit{background:var(--good)} .club.miss{opacity:.35}
+.topbar{display:flex;justify-content:space-between;align-items:center;color:var(--mute);font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:1px}
+.turn{text-align:center;margin:18px 0 6px}
+.turn .who{font-family:'Archivo Black',sans-serif;font-size:34px;text-transform:uppercase;color:var(--gold)}
+.timer{height:8px;background:#0b2015;border-radius:4px;overflow:hidden;margin:12px 0}
+.timer i{display:block;height:100%;background:var(--gold);transition:width .25s linear}
+.timer.low i{background:var(--bad)}
+.secs{text-align:center;font-family:'Archivo Black',sans-serif;font-size:44px}
+.err{color:var(--bad);font-size:14px;min-height:20px;margin-top:6px}
+.result{text-align:center;padding:10px 0}
+.pts{font-family:'Archivo Black',sans-serif;font-size:72px;line-height:1;color:var(--gold)}
+.pts.zero{color:var(--bad)}
+.matched{color:var(--mute);margin-top:6px}
+.override{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.override button{height:40px;border:1px solid var(--line);font-size:14px}
+table{width:100%;border-collapse:collapse}
+td{padding:12px 4px;border-bottom:1px solid var(--line);font-size:17px}
+td:last-child{text-align:right;font-family:'Archivo Black',sans-serif;font-size:20px}
+tr.lead td{color:var(--gold)}
+.ans{font-size:15px;line-height:1.7}
+.ans b{font-weight:600}
+.log{font-size:14px;color:var(--mute);line-height:1.8}
+.hidden{display:none!important}
+.center{text-align:center}
+.trophy{font-size:56px;text-align:center}
+.link{color:var(--mute);font-size:14px;text-decoration:underline;margin-top:16px;width:100%;height:40px}
+</style>
+</head>
+<body>
+<main id="app"><p class="sub">Loading the squad…</p></main>
+<script>
+const $=s=>document.querySelector(s);
+const app=$('#app');
+const LEAGUE={GB1:'ENG',ES1:'ESP',IT1:'ITA',L1:'GER',FR1:'FRA',NL1:'NED',PO1:'POR'};
+let D,IDX,S;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const norm=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/ø/g,'o').replace(/ß/g,'ss').replace(/ł/g,'l').toLowerCase().replace(/[^a-z ]/g,' ').replace(/\s+/g,' ').trim();
+
+function save(){try{localStorage.setItem('tc_setup',JSON.stringify({names:S.names,rounds:S.rounds,diff:S.diff}))}catch(e){}}
+function loadSetup(){try{return JSON.parse(localStorage.getItem('tc_setup'))}catch(e){return null}}
+
+async function init(){
+  D=await (await fetch('data.json')).json();
+  IDX=D.players.map(p=>{const n=norm(p[0]);return{n,t:n.split(' ')}});
+  const s=loadSetup()||{};
+  S={names:s.names&&s.names.length?s.names:['',''],rounds:s.rounds||5,diff:s.diff||'mixed'};
+  setup();
+}
+
+function setup(){
+  app.innerHTML=`<h1>Three<br><span>Clubs</span></h1>
+  <p class="sub">Three clubs come up. Name a player who played for all three. 3 points for all three, 2 for two, 1 for one. 30 seconds each. No repeats in a round.</p>
+  <div class="label">Players</div><div id="plist"></div>
+  <button class="add" id="addp">+ Add player</button>
+  <div class="label">Rounds</div>
+  <div class="seg" id="rounds">${[3,5,10,15].map(n=>`<button data-v="${n}">${n}</button>`).join('')}</div>
+  <div class="label">Difficulty</div>
+  <div class="seg" id="diff">${['easy','medium','hard','mixed'].map(n=>`<button data-v="${n}">${n[0].toUpperCase()+n.slice(1)}</button>`).join('')}</div>
+  <div class="err" id="serr"></div>
+  <button class="btn" id="go">Kick off</button>`;
+  const draw=()=>{
+    $('#plist').innerHTML=S.names.map((n,i)=>`<div class="prow"><input type="text" maxlength="16" placeholder="Player ${i+1}" value="${esc(n)}" data-i="${i}">${S.names.length>1?`<button data-x="${i}" aria-label="Remove">×</button>`:''}</div>`).join('');
+    $('#plist').querySelectorAll('input').forEach(el=>el.oninput=()=>{S.names[el.dataset.i]=el.value;$('#serr').textContent=''});
+    $('#plist').querySelectorAll('[data-x]').forEach(el=>el.onclick=()=>{S.names.splice(+el.dataset.x,1);draw()});
+    $('#addp').classList.toggle('hidden',S.names.length>=8);
+  };
+  const seg=(id,key)=>{const el=$('#'+id);const upd=()=>el.querySelectorAll('button').forEach(b=>b.classList.toggle('on',String(S[key])===b.dataset.v));
+    el.querySelectorAll('button').forEach(b=>b.onclick=()=>{S[key]=key==='rounds'?+b.dataset.v:b.dataset.v;upd()});upd()};
+  draw();seg('rounds','rounds');seg('diff','diff');
+  $('#addp').onclick=()=>{S.names.push('');draw();$('#plist').querySelector('input:last-of-type')?.focus()};
+  $('#go').onclick=()=>{
+    const names=S.names.map(n=>n.trim()).filter(Boolean);
+    if(!names.length){$('#serr').textContent='Add at least one player';return}
+    if(new Set(names.map(n=>n.toLowerCase())).size!==names.length){$('#serr').textContent='Player names need to be different';return}
+    S.names=names;save();
+    S.scores=names.map(()=>0);S.round=0;S.used=new Set();
+    nextRound();
+  };
+}
+
+function pickTrio(){
+  let tier=S.diff==='easy'?0:S.diff==='medium'?1:S.diff==='hard'?2:(()=>{const r=Math.random();return r<.45?0:r<.85?1:2})();
+  const pool=D.trios.filter(t=>t[3]===tier);
+  for(let k=0;k<50;k++){const t=pool[Math.floor(Math.random()*pool.length)];const key=t.slice(0,3).join();if(!S.used.has(key)){S.used.add(key);return t}}
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+function nextRound(){
+  S.round++;
+  if(S.round>S.rounds){return finish()}
+  S.trio=pickTrio();
+  const n=S.names.length,start=(S.round-1)%n;
+  S.order=[...Array(n)].map((_,i)=>(start+i)%n);
+  S.turn=0;S.answers=[];
+  turnIntro();
+}
+
+function clubsHTML(hits){
+  return `<div class="clubs">${S.trio.slice(0,3).map(ci=>{const c=D.clubs[ci];const cls=hits?(hits.includes(ci)?' hit':' miss'):'';return `<div class="club${cls}">${esc(c[0])}<small>${LEAGUE[c[1]]}</small></div>`}).join('')}</div>`;
+}
+function topbar(){return `<div class="topbar"><span>Round ${S.round} of ${S.rounds}</span><span>${S.diff}</span></div>`}
+
+function turnIntro(){
+  const p=S.order[S.turn];
+  if(S.names.length===1){return startTurn()}
+  app.innerHTML=`${topbar()}${clubsHTML()}
+  <div class="turn"><div class="sub">Pass the phone to</div><div class="who">${esc(S.names[p])}</div></div>
+  <button class="btn" id="start">I'm ready</button>
+  ${S.answers.length?`<div class="label">Already taken this round</div><div class="log">${S.answers.filter(a=>a.player!=null).map(a=>esc(D.players[a.player][0])).join(', ')||'Nothing yet'}</div>`:''}`;
+  $('#start').onclick=startTurn;
+}
+
+let tick;
+function startTurn(){
+  const p=S.order[S.turn];
+  const end=Date.now()+30000;
+  app.innerHTML=`${topbar()}${clubsHTML()}
+  <div class="turn"><div class="who">${esc(S.names[p])}</div></div>
+  <div class="secs" id="secs">30</div><div class="timer" id="bar"><i style="width:100%"></i></div>
+  <input type="text" id="guess" placeholder="Player name" autocomplete="off" autocapitalize="words" enterkeyhint="go">
+  <div class="err" id="gerr"></div>
+  <button class="btn" id="sub">Lock it in</button>
+  <button class="btn ghost" id="pass">Pass</button>`;
+  const g=$('#guess');g.focus();
+  g.oninput=()=>$('#gerr').textContent='';
+  g.onkeydown=e=>{if(e.key==='Enter')submit()};
+  const update=()=>{const left=Math.max(0,end-Date.now());const s=Math.ceil(left/1000);$('#secs').textContent=s;$('#bar i').style.width=(left/300)+'%';$('#bar').classList.toggle('low',s<=10);if(left<=0){clearInterval(tick);resolve(null,'Time’s up')}};
+  clearInterval(tick);tick=setInterval(update,250);
+  $('#pass').onclick=()=>{clearInterval(tick);resolve(null,'Passed')};
+  $('#sub').onclick=submit;
+  function submit(){
+    const v=g.value.trim();
+    if(norm(v).length<3){$('#gerr').textContent='Enter a name first';return}
+    const m=match(v);
+    if(m!=null&&S.answers.some(a=>a.player===m.i)){$('#gerr').textContent=`${D.players[m.i][0]} has already been said this round`;return}
+    clearInterval(tick);resolve(v,null,m);
+  }
+}
+
+function lev(a,b){if(Math.abs(a.length-b.length)>2)return 9;const d=[...Array(b.length+1).keys()];for(let i=1;i<=a.length;i++){let prev=d[0];d[0]=i;for(let j=1;j<=b.length;j++){const t=d[j];d[j]=Math.min(d[j]+1,d[j-1]+1,prev+(a[i-1]===b[j-1]?0:1));prev=t}}return d[b.length]}
+
+function match(raw){
+  const q=norm(raw),qt=q.split(' '),trio=S.trio.slice(0,3);
+  const score=i=>D.players[i][1].filter(c=>trio.includes(c)).length;
+  const exact=[];
+  IDX.forEach((p,i)=>{
+    if(p.n===q){exact.push(i);return}
+    // every guessed word is a whole word in the name, in order of the tail (e.g. "lukaku", "van dijk")
+    if(qt.every(w=>p.t.includes(w))) exact.push(i);
+  });
+  let cands=exact;
+  if(!cands.length&&q.length>=4){
+    const tol=q.length>=7?2:1;
+    IDX.forEach((p,i)=>{const last=p.t.slice(-qt.length).join(' ');if(lev(q,last)<=tol||lev(q,p.n)<=tol)cands.push(i)});
+  }
+  if(!cands.length)return null;
+  const sur=i=>{const t=IDX[i].t;return t.slice(-qt.length).join(' ')===q?1:0};
+  let best=cands[0],bs=-1,bu=-1;
+  for(const i of cands){const s=score(i),u=sur(i);if(s>bs||(s===bs&&u>bu)){bs=s;bu=u;best=i}} // ties: surname match first, then fame order
+  return {i:best,s:bs,fuzzy:!exact.length};
+}
+
+function resolve(raw,reason,m){
+  const p=S.order[S.turn];
+  let pts=0,hits=[],player=null;
+  if(m){player=m.i;pts=m.s;hits=D.players[m.i][1].filter(c=>S.trio.slice(0,3).includes(c))}
+  const ans={who:p,raw,player,pts,reason};
+  S.answers.push(ans);S.scores[p]+=pts;
+  const showResult=()=>{
+    app.innerHTML=`${topbar()}${clubsHTML(raw?hits:[])}
+    <div class="result">
+      <div class="sub">${esc(S.names[p])}</div>
+      <div class="pts ${ans.pts?'':'zero'}">${ans.pts}</div>
+      <div class="matched">${reason?esc(reason):player!=null?`Read as <b>${esc(D.players[player][0])}</b>`:`Couldn’t find “${esc(raw)}” in the database`}</div>
+    </div>
+    ${raw?`<div class="label">Wrong call? Set the points</div><div class="override">${[0,1,2,3].map(n=>`<button data-p="${n}" style="${n===ans.pts?'background:var(--ink);color:var(--bg)':''}">${n}</button>`).join('')}</div>`:''}
+    <button class="btn" id="next">${S.turn+1<S.order.length?`Next: ${esc(S.names[S.order[S.turn+1]])}`:'See the round'}</button>`;
+    app.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{const n=+b.dataset.p;S.scores[p]+=n-ans.pts;ans.pts=n;showResult()});
+    $('#next').onclick=()=>{S.turn++;S.turn<S.order.length?turnIntro():roundEnd()};
+  };
+  showResult();
+}
+
+function standings(){
+  const rows=S.names.map((n,i)=>({n,s:S.scores[i]})).sort((a,b)=>b.s-a.s);
+  return `<table>${rows.map((r,k)=>`<tr class="${k===0&&r.s>0?'lead':''}"><td>${esc(r.n)}</td><td>${r.s}</td></tr>`).join('')}</table>`;
+}
+
+function roundEnd(){
+  const t=S.trio,examples=t[4].map(i=>D.players[i][0]),total=t[5];
+  app.innerHTML=`${topbar()}${clubsHTML()}
+  <div class="label">This round</div>
+  <div class="card ans">${S.answers.map(a=>`<div><b>${esc(S.names[a.who])}</b> · ${a.player!=null?esc(D.players[a.player][0]):a.raw?esc(a.raw):esc(a.reason)} · ${a.pts} pt${a.pts===1?'':'s'}</div>`).join('')}</div>
+  <div class="label">Played for all three</div>
+  <div class="card ans">${examples.map(esc).join(', ')}${total>examples.length?` and ${total-examples.length} more`:''}</div>
+  <div class="label">Table</div>${standings()}
+  <button class="btn" id="next">${S.round<S.rounds?'Next round':'Final whistle'}</button>`;
+  $('#next').onclick=nextRound;
+}
+
+function finish(){
+  const max=Math.max(...S.scores),winners=S.names.filter((_,i)=>S.scores[i]===max);
+  app.innerHTML=`<div class="trophy">🏆</div>
+  <h2 class="center">${winners.length>1?'It’s a draw':esc(winners[0])+' wins'}</h2>
+  <div class="label">Final table</div>${standings()}
+  <button class="btn" id="again">Rematch</button>
+  <button class="btn ghost" id="new">New game</button>`;
+  $('#again').onclick=()=>{S.scores=S.names.map(()=>0);S.round=0;nextRound()};
+  $('#new').onclick=setup;
+}
+
+init().catch(()=>{app.innerHTML='<p class="sub">Couldn’t load the player data. Refresh to try again.</p>'});
+</script>
+</body>
+</html>
