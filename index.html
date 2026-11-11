@@ -372,7 +372,7 @@ function startTurn(){
   <div class="err" id="gerr" style="min-height:0;margin-top:4px"></div>
   <div class="sugg compact" id="sugg"></div>
   <div class="foot2"><span>Round ${S.round} of ${S.rounds} · ${S.diff==='fun'?'Fun pub':'Hard mixed'}${S.modern?' · 2010+':''}</span><button class="homebtn" data-home aria-label="Back to the home screen">‹ Home</button></div></div>`;
-  const g=$('#guess'),sg=$('#sugg');fitPlay();g.focus({preventScroll:true});
+  const g=$('#guess'),sg=$('#sugg');fitPlay();
   const card=i=>`<b>${esc(D.players[i][0])}</b><span>${esc(D.players[i][2]||'Former player')}</span>`;
   const draw=()=>{
     const q=norm(g.value);$('#gerr').textContent='';
@@ -392,7 +392,7 @@ function startTurn(){
     const c=CLUES.find(x=>x.k===k);
     b.querySelector('span').innerHTML=c.val();
     if(k==='order')$('#clubwrap').innerHTML=clubsHTML(null,co[1]);
-    g.focus({preventScroll:true});
+    if(document.activeElement===g)g.focus({preventScroll:true});
   });
   function submit(sel){
     if(S.answers.some(a=>a.player===sel)){$('#gerr').textContent=`${D.players[sel][0]} has already been said this round`;return}
