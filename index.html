@@ -357,7 +357,7 @@ function turnIntro(){
   $('#start').onclick=startTurn;
 }
 
-let tick,stopMic=null;
+let tick,stopMic=null,micOff=false;
 function startTurn(){
   screen(false);
   const p=S.order[S.turn];
@@ -409,18 +409,27 @@ function startTurn(){
     if(document.activeElement===g)g.focus({preventScroll:true});
   });
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(SR){
+  if(SR&&!micOff){
     const mic=$('#mic');mic.classList.remove('hidden');$('.answer').classList.add('has-mic');
     let rec=null;
     const stop=()=>{if(rec){try{rec.stop()}catch(e){}}};
     mic.onclick=e=>{
       e.preventDefault();e.stopPropagation();
       if(rec){stop();return}
-      rec=new SR();rec.lang='en-GB';rec.interimResults=true;rec.maxAlternatives=1;rec.continuous=false;
+      rec=new SR();rec.lang='en-GB';rec.interimResults=true;rec.maxAlternatives=1;rec.continuous=false;$('#gerr').textContent='';
       mic.classList.add('on');g.blur();sg.innerHTML='<div class="listening">Listening… say the player</div>';
-      rec.onresult=ev=>{let t='';for(const r of ev.results)t+=r[0].transcript;g.value=t.replace(/[.,!?]/g,'').trim();draw()};
-      rec.onerror=ev=>{$('#gerr').textContent=ev.error==='not-allowed'?'Microphone blocked. Allow it in your browser settings, or type instead.':'Didn’t catch that. Try again or type it.'};
-      rec.onend=()=>{mic.classList.remove('on');rec=null;if(!g.value)sg.innerHTML=''};
+      let heard='';
+      rec.onresult=ev=>{let t='';for(const r of ev.results)t+=r[0].transcript;heard=t.replace(/[.,!?]/g,'').trim();if(heard){g.value=heard;draw()}};
+      rec.onerror=ev=>{
+        if(heard||ev.error==='aborted')return;
+        const blocked=['not-allowed','service-not-allowed','network','audio-capture'].includes(ev.error);
+        if(blocked){
+          micOff=true;mic.classList.add('hidden');$('.answer').classList.remove('has-mic');
+          $('#gerr').textContent='Voice isn’t available here ('+ev.error+'). Tap the box and use the mic on your keyboard instead.';
+          setTimeout(()=>g.focus(),50);
+        }else $('#gerr').textContent=ev.error==='no-speech'?'Didn’t hear anything. Tap the mic and say the name straight away.':'Didn’t catch that ('+ev.error+'). Try again or type it.';
+      };
+      rec.onend=()=>{mic.classList.remove('on');rec=null;if(!g.value&&!$('#gerr').textContent)sg.innerHTML=''};
       try{rec.start()}catch(err){mic.classList.remove('on');rec=null}
     };
     stopMic=stop;
