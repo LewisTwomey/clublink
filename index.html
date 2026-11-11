@@ -358,6 +358,22 @@ function turnIntro(){
 }
 
 let tick,stopMic=null,micOff=false;
+/* one shared recogniser for the whole session: iOS Safari stops hearing after the first
+   session if a new SpeechRecognition object is created each time */
+const VOICE={rec:null,busy:false,h:null};
+function getRec(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR)return null;
+  if(!VOICE.rec){
+    const r=new SR();r.lang='en-GB';r.interimResults=true;r.maxAlternatives=1;r.continuous=false;
+    r.onstart=()=>{VOICE.busy=true};
+    r.onresult=e=>VOICE.h&&VOICE.h.result(e);
+    r.onerror=e=>VOICE.h&&VOICE.h.error(e);
+    r.onend=()=>{VOICE.busy=false;VOICE.h&&VOICE.h.end()};
+    VOICE.rec=r;
+  }
+  return VOICE.rec;
+}
 function startTurn(){
   screen(false);
   const p=S.order[S.turn];
@@ -408,31 +424,38 @@ function startTurn(){
     if(k==='order')$('#clubwrap').innerHTML=clubsHTML(null,co[1]);
     if(document.activeElement===g)g.focus({preventScroll:true});
   });
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(SR&&!micOff){
+  if(getRec()&&!micOff){
     const mic=$('#mic');mic.classList.remove('hidden');$('.answer').classList.add('has-mic');
-    let rec=null;
-    const stop=()=>{if(rec){try{rec.stop()}catch(e){}}};
-    mic.onclick=e=>{
-      e.preventDefault();e.stopPropagation();
-      if(rec){stop();return}
-      rec=new SR();rec.lang='en-GB';rec.interimResults=true;rec.maxAlternatives=1;rec.continuous=false;$('#gerr').textContent='';
-      mic.classList.add('on');g.blur();sg.innerHTML='<div class="listening">Listening… say the player</div>';
-      let heard='';
-      rec.onresult=ev=>{let t='';for(const r of ev.results)t+=r[0].transcript;heard=t.replace(/[.,!?]/g,'').trim();if(heard){g.value=heard;draw()}};
-      rec.onerror=ev=>{
+    const rec=getRec();let heard='',guard=null;
+    const done=()=>{clearTimeout(guard);mic.classList.remove('on')};
+    VOICE.h={
+      result:ev=>{let t='';for(let i=0;i<ev.results.length;i++)t+=ev.results[i][0].transcript;heard=t.replace(/[.,!?]/g,'').trim();if(heard){g.value=heard;draw()}},
+      error:ev=>{
         if(heard||ev.error==='aborted')return;
-        const blocked=['not-allowed','service-not-allowed','network','audio-capture'].includes(ev.error);
-        if(blocked){
+        if(['not-allowed','service-not-allowed','audio-capture'].includes(ev.error)){
           micOff=true;mic.classList.add('hidden');$('.answer').classList.remove('has-mic');
           $('#gerr').textContent='Voice isn’t available here ('+ev.error+'). Tap the box and use the mic on your keyboard instead.';
           setTimeout(()=>g.focus(),50);
-        }else $('#gerr').textContent=ev.error==='no-speech'?'Didn’t hear anything. Tap the mic and say the name straight away.':'Didn’t catch that ('+ev.error+'). Try again or type it.';
-      };
-      rec.onend=()=>{mic.classList.remove('on');rec=null;if(!g.value&&!$('#gerr').textContent)sg.innerHTML=''};
-      try{rec.start()}catch(err){mic.classList.remove('on');rec=null}
+        }else $('#gerr').textContent=ev.error==='no-speech'?'Didn’t hear anything. Tap the mic and say the name straight away.':'Didn’t catch that ('+ev.error+'). Tap the mic to try again.';
+      },
+      end:()=>{done();if(!g.value&&!$('#gerr').textContent)sg.innerHTML=''}
     };
-    stopMic=stop;
+    const begin=()=>{
+      heard='';$('#gerr').textContent='';
+      mic.classList.add('on');g.blur();sg.innerHTML='<div class="listening">Listening… say the player</div>';
+      try{rec.start();VOICE.busy=true}catch(err){
+        // a previous session is still closing: abort it and retry once it has ended
+        try{rec.abort()}catch(_){}
+        setTimeout(()=>{try{rec.start();VOICE.busy=true}catch(_){done();$('#gerr').textContent='Mic is busy. Tap it again.'}},350);
+      }
+      clearTimeout(guard);guard=setTimeout(()=>{try{rec.stop()}catch(_){}},8000);
+    };
+    mic.onclick=ev=>{
+      ev.preventDefault();ev.stopPropagation();
+      if(VOICE.busy){try{rec.stop()}catch(_){}return}
+      begin();
+    };
+    stopMic=()=>{clearTimeout(guard);if(VOICE.busy){try{rec.abort()}catch(_){}}};
   }
   function submit(sel){
     if(typeof stopMic==='function')stopMic();
